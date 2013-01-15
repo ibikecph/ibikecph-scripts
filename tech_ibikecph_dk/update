@@ -1,0 +1,142 @@
+#!/usr/bin/env ruby
+
+require 'fileutils'
+
+ROOT = File.expand_path '~'
+BIN_PATH  = ROOT+'/Project-OSRM'
+DATA_FOLDER = ROOT+'/var'
+REPLICATION_FOLDER = 'replicate'
+PROFILE = ROOT+'/Project-OSRM/profiles/bicycle.lua'
+POLYGON = ROOT+'/var/map.poly'
+NAME = 'map'
+FILE = "#{NAME}.osm.pbf"
+NEWFILE = "#{NAME}_new.osm.pbf"
+USER = 'root'
+SERVER = 'routes.ibikecph.dk'
+SERVER_ROOT = '/home/osm'
+RENDER_OPTIONS = 'z=9-17 bbox=7.64,54.33,13.37,57.98 map=solar'
+SERVER_BIN_PATH = SERVER_ROOT + '/Project-OSRM'
+
+
+def time str, &block
+  start = Time.now
+  puts '---------'
+  puts "#{str}: Starting at #{start}"
+  yield block
+  finish = Time.now
+  seconds = (Time.now - start).to_i
+  formatted = format_time seconds
+  puts "#{str}: Completed in #{seconds}s / #{formatted}, at #{finish}."
+end
+
+def run_cmd cmd
+  puts cmd
+  raise "Failed to run command: #{cmd}" unless system cmd
+end
+
+def replicate
+  Dir.chdir DATA_FOLDER do
+    run_cmd "osmosis --read-replication-interval workingDirectory=#{REPLICATION_FOLDER} --simplify-change --read-pbf file=#{FILE} --apply-change --bounding-polygon file=#{POLYGON} --write-pbf file=#{NEWFILE} omitmetadata=true"
+    FileUtils.mv NEWFILE, FILE
+  end
+end
+
+def process
+  Dir.chdir DATA_FOLDER do
+    run_cmd "#{BIN_PATH}/osrm-extract #{FILE} #{PROFILE}"
+    puts
+    run_cmd "#{BIN_PATH}/osrm-prepare #{NAME}.osrm #{NAME}.osrm.restrictions #{PROFILE}"
+    puts
+  end
+end
+
+def rsync
+  run_cmd "rsync #{DATA_FOLDER}/*.osrm* #{USER}@#{SERVER}:/tmp/#{NAME}/"
+end
+
+def postgres
+  run_cmd "osm2pgsql -d osm -U osm -c -C8000 --number-processes=4 #{DATA_FOLDER}/#{FILE}"
+end
+
+def remove_tiles
+  run_cmd "rm -rf /tiles/plain/*"
+end
+
+def render_tiles
+  run_cmd "tirex-batch #{RENDER_OPTIONS}"
+  raw = ''
+  (20*60).times do |i|
+    sleep 60
+    raw = `tirex-status --raw`
+    size = /"size" : (\d+)/.match(raw)[1].to_i
+    if i%30 == 0
+      puts "#{size} tiles left to render, at #{Time.now}"
+    end
+    return if size==0
+  end
+  raise "Rendering timed out! Last tirex-status raw: #{raw}"
+end
+
+def convert_tiles
+  run_cmd "#{ROOT}/meta2tile /tiles/meta /tiles/plain"
+end
+
+def sync_tiles
+  run_cmd "rsync -r --ignore-times /tiles/plain/ tiles.ibikecph.dk:/tiles/plain/"
+end
+
+def deploy
+  log_msg = "OSRM update deployed at #{Time.now}"
+  if ARGV[0]=='bins'
+    run_cmd %{ssh #{USER}@#{SERVER} "stop osrm; rm -rf #{SERVER_ROOT}/data_old; mv #{SERVER_ROOT}/data #{SERVER_ROOT}/data_old; mv /tmp/#{NAME} #{SERVER_ROOT}/data"}
+    run_cmd %{scp #{BIN_PATH}/osrm-* #{USER}@#{SERVER}:#{SERVER_BIN_PATH}/}
+    run_cmd %{ssh #{USER}@#{SERVER} "start osrm; echo '#{log_msg}' >> #{SERVER_ROOT}/deploy.log"}
+  else
+    run_cmd %{ssh #{USER}@#{SERVER} "stop osrm; rm -rf #{SERVER_ROOT}/data_old; mv #{SERVER_ROOT}/data #{SERVER_ROOT}/data_old; mv /tmp/#{NAME} #{SERVER_ROOT}/data; start osrm; echo '#{log_msg}' >> #{SERVER_ROOT}/deploy.log"}
+  end
+end
+
+def shutdown
+  run_cmd "#{ROOT}/shutdown"
+end
+
+def format_time total_seconds
+  seconds = total_seconds % 60
+  minutes = (total_seconds / 60) % 60
+  hours = total_seconds / (60 * 60)
+  format("%02d:%02d:%02d", hours, minutes, seconds)
+end
+
+def update
+  puts '---------------------------------------'
+  time("Updating") do
+    begin
+      run_cmd "df -h"
+      run_cmd "free -m"
+      if ARGV.empty? || ARGV.include?('osm')
+        time("Updating OSM data") { replicate }
+      end
+      if ARGV.empty? || ARGV.include?('osrm')
+        time("Preprocess OSRM data") { process }
+        time("Sync data to route server") { rsync }
+        time("Swap folders and restart OSRM") { deploy }
+      end
+      if ARGV.empty? || ARGV.include?('tiles')
+        time("Import to Postgres") { postgres }
+        time("Render meta-tiles") { render_tiles }
+        time("Remove old tiles") { remove_tiles }
+        time("Convert meta-tiles") { convert_tiles }
+        time("Sync tiles to tiles server") { sync_tiles }
+      end
+    rescue Exception => e
+      puts "*** An error occurred:"
+      puts e
+    ensure
+      if ARGV.empty? || ARGV.include?('shutdown')
+        time("Shutdown") { shutdown }
+      end
+    end
+  end
+end
+
+update

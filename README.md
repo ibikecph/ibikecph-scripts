@@ -1,4 +1,4 @@
-osrm_setup
+ibikecph setup
 ===================
 
-Setup for the ibikecph.dk route server. Please note that these files work with a specific version of OSRM, currently our own custom branch at https://github.com/ibikecph/Project-OSRM/tree/ibikecph_alpha.
+Various scripts and configurations used on the ibikecph.dk servers for updating OSM and OSRM data, and regenerating Mapnik tiles.

@@ -1,0 +1,119 @@
+#!/usr/bin/ruby
+
+require 'rubygems'
+require 'savon'
+
+USERNAME = 'emil.tin@tmf.kk.dk/6d3cb6b9-36c9-3337-b235-7f942744edcc'
+PASSWORD = '3djvxGE3xsd23a'
+SERVER_ID = 5373
+SERVER_USER = 'osm'
+SERVER_DOMAIN = 'tech.ibikecph.dk'
+SERVER_ROOT = '/home/osm'
+SERVER_COMMAND = 'update osm osrm shutdown'    #skipping tiles for now. to run the full update cycle, simply use 'update'
+
+Savon.configure do |config|
+  config.log = false
+end
+
+HTTPI.log = false
+
+
+class UpdateScheduler
+  
+  def initialize
+    @client = Savon::Client.new do
+      wsdl.document = "https://api.cloud.dk/?wsdl"
+      http.auth.basic USERNAME, PASSWORD
+      http.auth.ssl.verify_mode = :none
+    end
+  end
+
+  def get_status
+    response = @client.request :get_server, :body => { 'server_id' => SERVER_ID }
+    response.body[:get_server_response][:get_server_return][:status]
+  end
+
+  def wait_for_ssh
+    600.times do
+       return true if system %{ssh #{SERVER_USER}@#{SERVER_DOMAIN} "whoami" 2>&1 > /dev/null}
+       sleep 1
+    end
+    raise "Timeout while waiting for SSH"
+  end  
+
+  def launch
+    puts 'Launching server'
+    @client.request :start_server, :body => { 'server_id' => SERVER_ID }
+  end
+
+  def ensure_up
+    if get_status=='5'  #stopped?
+      launch
+    else
+      puts 'Server already running'
+    end
+    puts 'Waiting for SSH'
+    wait_for_ssh
+    puts 'Server ready'
+  end
+  
+  def shutdown
+    puts 'Shutting down server'
+    @client.request :stop_server, :body => { 'server_id' => SERVER_ID, 'stop_method' => 1 }
+    puts 'Server was shut down'
+  end
+
+
+
+  def down
+    puts "--------"
+    puts "Shutting down update server at #{Time.now}"  # 1=graceful shutdown, 2=kill
+    @client.request :stop_server, :body => { 'server_id' => SERVER_ID, 'stop_method' => 1 }
+  end
+
+  def up
+    puts "--------"
+    puts "Launching update server at #{Time.now}"
+    ensure_up
+  end
+
+  def status
+    puts get_status
+  end
+
+  def update
+    puts "--------"
+    puts "Starting update at #{Time.now}"
+    ensure_up
+
+    #run script in background using '&'
+    #use nohup, so it's not terminated when we log out of ssh
+    #to avoid ssh hanging, make sure to redirect all three stream: stdout, stderr, stdin
+    puts "Initiating remote update at #{Time.now}... "
+    if system %{ssh #{SERVER_USER}@#{SERVER_DOMAIN} "nohup #{SERVER_ROOT}/#{SERVER_COMMAND} >> #{SERVER_ROOT}/update.log 2>&1 < /dev/null &"}
+      puts 'OK'
+      #we're done, remote script will handle shutdown after it finishes
+    else
+      raise '*** Failed to initiate remote update!'
+    end
+  rescue Exception => e
+    puts e
+    #if something goes wrong, ensure shutdown
+    shutdown
+  ensure
+    puts "\n\n"
+  end
+end
+
+
+scheduler = UpdateScheduler.new
+
+if ARGV[0]==nil
+  scheduler.update
+elsif ARGV[0]=='down'
+  scheduler.down
+elsif ARGV[0]=='up'
+  scheduler.up
+elsif ARGV[0]=='status'
+  scheduler.status
+end
