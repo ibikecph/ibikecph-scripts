@@ -3,7 +3,7 @@
 require 'rubygems'
 require 'savon'
 
-config = YAML.load_file('config.yml')
+config = YAML.load_file('update.yml')
 
 USERNAME = config['username']
 PASSWORD = config['password']
