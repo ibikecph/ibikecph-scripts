@@ -3,9 +3,12 @@
 require 'rubygems'
 require 'savon'
 
-USERNAME = 'emil.tin@tmf.kk.dk/6d3cb6b9-36c9-3337-b235-7f942744edcc'
-PASSWORD = '3djvxGE3xsd23a'
-SERVER_ID = 5373
+config = YAML.load_file('config.yml')
+
+USERNAME = config['username']
+PASSWORD = config['password']
+SERVER_ID = config['server_id']
+
 SERVER_USER = 'osm'
 SERVER_DOMAIN = 'tech.ibikecph.dk'
 SERVER_ROOT = '/home/osm'
