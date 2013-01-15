@@ -9,7 +9,7 @@ SERVER_ID = 5373
 SERVER_USER = 'osm'
 SERVER_DOMAIN = 'tech.ibikecph.dk'
 SERVER_ROOT = '/home/osm'
-SERVER_COMMAND = 'update osm osrm shutdown'    #skipping tiles for now. to run the full update cycle, simply use 'update'
+SERVER_COMMAND = 'ibikecph/update osm osrm shutdown'    #skipping tiles for now. to run the full update cycle, simply use 'update'
 
 Savon.configure do |config|
   config.log = false
