@@ -10,7 +10,6 @@ USERNAME = config['username']
 PASSWORD = config['password']
 SERVER_ID = config['server_id']
 
-
 ROOT = File.expand_path '~'
 BIN_PATH  = ROOT+'/Project-OSRM'
 DATA_FOLDER = ROOT+'/var'
@@ -25,6 +24,12 @@ SERVER = 'routes.ibikecph.dk'
 SERVER_ROOT = '/home/osm'
 RENDER_OPTIONS = 'z=9-17 bbox=7.64,54.33,13.37,57.98 map=solar'
 SERVER_BIN_PATH = SERVER_ROOT + '/Project-OSRM'
+
+Savon.configure do |config|
+  config.log = false
+end
+
+HTTPI.log = false
 
 def time str, &block
   start = Time.now
@@ -106,9 +111,6 @@ end
 
 def shutdown
   puts 'Shutting down'
-  Savon.configure do |config|
-    config.log = false
-  end
   client = Savon::Client.new do
     wsdl.document = "https://api.cloud.dk/?wsdl"
     http.auth.basic USERNAME, PASSWORD
