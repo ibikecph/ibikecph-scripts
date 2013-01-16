@@ -1,6 +1,15 @@
 #!/usr/bin/env ruby
 
 require 'fileutils'
+require 'rubygems'
+require 'savon'
+
+config = YAML.load_file('process.yml')
+
+USERNAME = config['username']
+PASSWORD = config['password']
+SERVER_ID = config['server_id']
+
 
 ROOT = File.expand_path '~'
 BIN_PATH  = ROOT+'/Project-OSRM'
@@ -16,7 +25,6 @@ SERVER = 'routes.ibikecph.dk'
 SERVER_ROOT = '/home/osm'
 RENDER_OPTIONS = 'z=9-17 bbox=7.64,54.33,13.37,57.98 map=solar'
 SERVER_BIN_PATH = SERVER_ROOT + '/Project-OSRM'
-
 
 def time str, &block
   start = Time.now
@@ -97,7 +105,16 @@ def deploy
 end
 
 def shutdown
-  run_cmd "#{ROOT}/shutdown"
+  puts 'Shutting down'
+  Savon.configure do |config|
+    config.log = false
+  end
+  client = Savon::Client.new do
+    wsdl.document = "https://api.cloud.dk/?wsdl"
+    http.auth.basic USERNAME, PASSWORD
+    http.auth.ssl.verify_mode = :none
+  end
+  client.request :stop_server, :body => { 'server_id' => SERVER_ID, 'stop_method' => 1 }
 end
 
 def format_time total_seconds
