@@ -63,8 +63,12 @@ def process
   end
 end
 
-def rsync
+def rsync_osrm_data
   run_cmd "rsync #{DATA_FOLDER}/*.osrm* #{USER}@#{SERVER}:/tmp/#{NAME}/"
+end
+
+def copy_binaries
+  run_cmd "scp #{BIN_PATH}/osrm-* #{USER}@#{SERVER}:/tmp/#{NAME}/"
 end
 
 def postgres
@@ -100,13 +104,7 @@ end
 
 def deploy
   log_msg = "OSRM update deployed at #{Time.now}"
-  if ARGV[0]=='bins'
-    run_cmd %{ssh #{USER}@#{SERVER} "stop osrm; rm -rf #{SERVER_ROOT}/data_old; mv #{SERVER_ROOT}/data #{SERVER_ROOT}/data_old; mv /tmp/#{NAME} #{SERVER_ROOT}/data"}
-    run_cmd %{scp #{BIN_PATH}/osrm-* #{USER}@#{SERVER}:#{SERVER_BIN_PATH}/}
-    run_cmd %{ssh #{USER}@#{SERVER} "start osrm; echo '#{log_msg}' >> #{SERVER_ROOT}/deploy.log"}
-  else
-    run_cmd %{ssh #{USER}@#{SERVER} "stop osrm; rm -rf #{SERVER_ROOT}/data_old; mv #{SERVER_ROOT}/data #{SERVER_ROOT}/data_old; mv /tmp/#{NAME} #{SERVER_ROOT}/data; start osrm; echo '#{log_msg}' >> #{SERVER_ROOT}/deploy.log"}
-  end
+  run_cmd %{ssh #{USER}@#{SERVER} "rm -rf #{SERVER_ROOT}/data_old; stop osrm; mv #{SERVER_ROOT}/data #{SERVER_ROOT}/data_old; mv /tmp/#{NAME} #{SERVER_ROOT}/data; start osrm; echo '#{log_msg}' >> #{SERVER_ROOT}/deploy.log"}
 end
 
 def shutdown
@@ -137,7 +135,8 @@ def update
       end
       if ARGV.empty? || ARGV.include?('osrm')
         time("Preprocess OSRM data") { process }
-        time("Sync data to route server") { rsync }
+        time("Sync data to route server") { rsync_osrm_data }
+        time("Copy binaries route server") { copy_binaries }
         time("Swap folders and restart OSRM") { deploy }
       end
       if ARGV.empty? || ARGV.include?('tiles')
