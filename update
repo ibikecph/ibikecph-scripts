@@ -1,6 +1,7 @@
 #!/usr/bin/ruby
 
 require 'rubygems'
+require 'YAML'
 require 'savon'
 
 config = YAML.load_file('update.yml')

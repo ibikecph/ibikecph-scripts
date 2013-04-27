@@ -11,7 +11,7 @@ PASSWORD = config['password']
 SERVER_ID = config['server_id']
 
 ROOT = File.expand_path '~'
-BIN_PATH  = ROOT+'/Project-OSRM'
+BIN_PATH  = ROOT+'/Project-OSRM/build'
 DATA_FOLDER = ROOT+'/var'
 REPLICATION_FOLDER = 'replicate'
 PROFILE = ROOT+'/Project-OSRM/profiles/bicycle.lua'
