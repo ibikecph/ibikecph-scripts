@@ -119,4 +119,6 @@ elsif ARGV[0]=='up'
   scheduler.up
 elsif ARGV[0]=='status'
   scheduler.status
+elsif ARGV[0]=='test'
+  puts "Test at #{Time.now}... "
 end
