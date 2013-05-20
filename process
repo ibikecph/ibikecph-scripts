@@ -16,10 +16,11 @@ DATA_FOLDER = ROOT+'/var'
 REPLICATION_FOLDER = 'replicate'
 PROFILES = ['bicycle']
 PROFILES_FOLDER = ROOT+'/Project-OSRM/profiles'
-POLYGON = ROOT+'/var/map.poly'
-NAME = 'map'
-FILE = "#{NAME}.osm.pbf"
-NEWFILE = "#{NAME}_new.osm.pbf"
+MAP_NAME = 'map'
+POLYGON = ROOT+"/var/#{MAP_NAME}.poly"
+PACKAGE_NAME = 'data'
+OSM_FILE = "#{MAP_NAME}.osm.pbf"
+NEWFILE = "#{MAP_NAME}_new.osm.pbf"
 USER = 'root'
 SERVER = 'routes.ibikecph.dk'
 SERVER_ROOT = '/home/osm'
@@ -50,8 +51,8 @@ end
 
 def replicate
   Dir.chdir DATA_FOLDER do
-    run_cmd "osmosis --read-replication-interval workingDirectory=#{REPLICATION_FOLDER} --simplify-change --read-pbf file=#{FILE} --apply-change --bounding-polygon file=#{POLYGON} --write-pbf file=#{NEWFILE} omitmetadata=true"
-    FileUtils.mv NEWFILE, FILE
+    run_cmd "osmosis --read-replication-interval workingDirectory=#{REPLICATION_FOLDER} --simplify-change --read-pbf file=#{OSM_FILE} --apply-change --bounding-polygon file=#{POLYGON} --write-pbf file=#{NEWFILE} omitmetadata=true"
+    FileUtils.mv NEWFILE, OSM_FILE
   end
 end
 
@@ -63,26 +64,26 @@ def process
     Dir.chdir DATA_FOLDER do
       run_cmd "rm -f *.osrm*"
       puts
-      run_cmd "#{BIN_PATH}/osrm-extract #{FILE} #{profile_path}"
+      run_cmd "#{BIN_PATH}/osrm-extract #{OSM_FILE} #{profile_path}"
       puts
-      run_cmd "#{BIN_PATH}/osrm-prepare #{NAME}.osrm #{NAME}.osrm.restrictions #{profile_path}"
+      run_cmd "#{BIN_PATH}/osrm-prepare #{MAP_NAME}.osrm #{MAP_NAME}.osrm.restrictions #{profile_path}"
       puts
-      run_cmd "mv *.osrm* #{profile}/"
+      run_cmd "mkdir -p #{profile}; mv *.osrm* #{PACKAGE_NAME}/#{profile}/"
       puts
     end
   end
 end
 
 def rsync_osrm_data
-  run_cmd "rsync #{DATA_FOLDER}/*.osrm* #{USER}@#{SERVER}:/tmp/#{NAME}/"
+  run_cmd "rsync #{DATA_FOLDER}/#{PACKAGE_NAME} #{USER}@#{SERVER}:/tmp/#{PACKAGE_NAME}/"
 end
 
 def copy_binaries
-  run_cmd "scp #{BIN_PATH}/osrm-* #{USER}@#{SERVER}:/tmp/#{NAME}/"
+  run_cmd "scp #{BIN_PATH}/osrm-* #{USER}@#{SERVER}:/tmp/#{PACKAGE_NAME}/"
 end
 
 def postgres
-  run_cmd "osm2pgsql -d osm -U osm -c -C8000 --number-processes=4 #{DATA_FOLDER}/#{FILE}"
+  run_cmd "osm2pgsql -d osm -U osm -c -C8000 --number-processes=4 #{DATA_FOLDER}/#{OSM_FILE}"
 end
 
 def remove_tiles
@@ -114,7 +115,15 @@ end
 
 def deploy
   log_msg = "OSRM update deployed at #{Time.now}"
-  run_cmd %{ssh #{USER}@#{SERVER} "rm -rf #{SERVER_ROOT}/data_old; stop osrm; mv #{SERVER_ROOT}/data #{SERVER_ROOT}/data_old; mv /tmp/#{NAME} #{SERVER_ROOT}/data; start osrm; echo '#{log_msg}' >> #{SERVER_ROOT}/log/deploy.log"}
+  cmd = <<-EOF
+    rm -rf #{SERVER_ROOT}/#{PACKAGE_NAME}_old;
+    stop osrm;
+    mv #{SERVER_ROOT}/#{PACKAGE_NAME} #{SERVER_ROOT}/#{PACKAGE_NAME}_old;
+    mv /tmp/#{MAP_NAME} #{SERVER_ROOT}/#{PACKAGE_NAME};
+    start osrm;
+    echo '#{log_msg}' >> #{SERVER_ROOT}/log/deploy.log;
+  EOF
+  run_cmd %{ssh #{USER}@#{SERVER} "#{cmd}" }
 end
 
 def shutdown
