@@ -57,11 +57,17 @@ end
 
 def process
   for profile in PROFILES do
+    puts '----'
+    puts "Processing profile: #{profile}"
     profile_path = "#{PROFILES_FOLDER}/#{profile}.lua"
-    Dir.chdir "#{DATA_FOLDER}/#{profile}" do
-      run_cmd "#{BIN_PATH}/osrm-extract ../#{FILE} #{profile_path}"
+    Dir.chdir DATA_FOLDER do
+      run_cmd "rm -f *.osrm*"
       puts
-      run_cmd "#{BIN_PATH}/osrm-prepare ../#{NAME}.osrm #{NAME}.osrm.restrictions #{PROFILE}"
+      run_cmd "#{BIN_PATH}/osrm-extract #{FILE} #{profile_path}"
+      puts
+      run_cmd "#{BIN_PATH}/osrm-prepare #{NAME}.osrm #{NAME}.osrm.restrictions #{profile_path}"
+      puts
+      run_cmd "mv *.osrm* #{profile}/"
       puts
     end
   end
