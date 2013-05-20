@@ -14,7 +14,8 @@ ROOT = File.expand_path '~'
 BIN_PATH  = ROOT+'/Project-OSRM/build'
 DATA_FOLDER = ROOT+'/var'
 REPLICATION_FOLDER = 'replicate'
-PROFILE = ROOT+'/Project-OSRM/profiles/bicycle.lua'
+PROFILES = ['bicycle']
+PROFILES_FOLDER = ROOT+'/Project-OSRM/profiles'
 POLYGON = ROOT+'/var/map.poly'
 NAME = 'map'
 FILE = "#{NAME}.osm.pbf"
@@ -55,11 +56,14 @@ def replicate
 end
 
 def process
-  Dir.chdir DATA_FOLDER do
-    run_cmd "#{BIN_PATH}/osrm-extract #{FILE} #{PROFILE}"
-    puts
-    run_cmd "#{BIN_PATH}/osrm-prepare #{NAME}.osrm #{NAME}.osrm.restrictions #{PROFILE}"
-    puts
+  for profile in PROFILES do
+    profile_path = "#{PROFILES_FOLDER}/#{profile}.lua"
+    Dir.chdir "#{DATA_FOLDER}/#{profile}" do
+      run_cmd "#{BIN_PATH}/osrm-extract ../#{FILE} #{profile_path}"
+      puts
+      run_cmd "#{BIN_PATH}/osrm-prepare ../#{NAME}.osrm #{NAME}.osrm.restrictions #{PROFILE}"
+      puts
+    end
   end
 end
 
@@ -104,7 +108,7 @@ end
 
 def deploy
   log_msg = "OSRM update deployed at #{Time.now}"
-  run_cmd %{ssh #{USER}@#{SERVER} "rm -rf #{SERVER_ROOT}/data_old; stop osrm; mv #{SERVER_ROOT}/data #{SERVER_ROOT}/data_old; mv /tmp/#{NAME} #{SERVER_ROOT}/data; start osrm; echo '#{log_msg}' >> #{SERVER_ROOT}/deploy.log"}
+  run_cmd %{ssh #{USER}@#{SERVER} "rm -rf #{SERVER_ROOT}/data_old; stop osrm; mv #{SERVER_ROOT}/data #{SERVER_ROOT}/data_old; mv /tmp/#{NAME} #{SERVER_ROOT}/data; start osrm; echo '#{log_msg}' >> #{SERVER_ROOT}/log/deploy.log"}
 end
 
 def shutdown
