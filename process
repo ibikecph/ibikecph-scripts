@@ -57,29 +57,31 @@ def replicate
 end
 
 def process
-  for profile in PROFILES do
-    puts '----'
-    puts "Processing profile: #{profile}"
-    profile_path = "#{PROFILES_FOLDER}/#{profile}.lua"
-    Dir.chdir DATA_FOLDER do
-      run_cmd "rm -f *.osrm*"
+  run_cmd "rm -rf #{DATA_FOLDER}/#{PACKAGE_NAME}"
+  run_cmd "mkdir -p #{DATA_FOLDER}/#{PACKAGE_NAME}"
+  Dir.chdir "#{DATA_FOLDER}" do
+    for profile in PROFILES do
+      puts '----'
+      puts "Processing profile: #{profile}"
+      profile_path = "#{PROFILES_FOLDER}/#{profile}.lua"
+      run_cmd "rm -rf #{MAP_NAME}.osrm*"
       puts
       run_cmd "#{BIN_PATH}/osrm-extract #{OSM_FILE} #{profile_path}"
       puts
       run_cmd "#{BIN_PATH}/osrm-prepare #{MAP_NAME}.osrm #{MAP_NAME}.osrm.restrictions #{profile_path}"
       puts
-      run_cmd "mkdir -p #{profile}; mv *.osrm* #{PACKAGE_NAME}/#{profile}/"
+      run_cmd "mkdir -p #{PACKAGE_NAME}/#{profile}; mv #{MAP_NAME}.osrm* #{PACKAGE_NAME}/#{profile}/"
       puts
     end
   end
 end
 
-def rsync_osrm_data
-  run_cmd "rsync #{DATA_FOLDER}/#{PACKAGE_NAME} #{USER}@#{SERVER}:/tmp/#{PACKAGE_NAME}/"
+def copy_binaries
+  run_cmd "cp #{BIN_PATH}/osrm-* #{DATA_FOLDER}/#{PACKAGE_NAME}/"
 end
 
-def copy_binaries
-  run_cmd "scp #{BIN_PATH}/osrm-* #{USER}@#{SERVER}:/tmp/#{PACKAGE_NAME}/"
+def rsync_osrm_data
+  run_cmd "rsync #{DATA_FOLDER}/#{PACKAGE_NAME} #{USER}@#{SERVER}:/tmp/#{PACKAGE_NAME}/"
 end
 
 def postgres
@@ -154,8 +156,8 @@ def update
       end
       if ARGV.empty? || ARGV.include?('osrm')
         time("Preprocess OSRM data") { process }
+        time("Copy binaries") { copy_binaries }
         time("Sync data to route server") { rsync_osrm_data }
-        time("Copy binaries route server") { copy_binaries }
         time("Swap folders and restart OSRM") { deploy }
       end
       if ARGV.empty? || ARGV.include?('tiles')
