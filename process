@@ -81,7 +81,7 @@ def copy_binaries
 end
 
 def rsync_osrm_data
-  run_cmd "rsync #{DATA_FOLDER}/#{PACKAGE_NAME} #{USER}@#{SERVER}:/tmp/#{PACKAGE_NAME}/"
+  run_cmd "rsync -r --delete --force #{DATA_FOLDER}/#{PACKAGE_NAME} #{USER}@#{SERVER}:/tmp/"
 end
 
 def postgres
@@ -121,7 +121,7 @@ def deploy
     rm -rf #{SERVER_ROOT}/#{PACKAGE_NAME}_old;
     stop osrm;
     mv #{SERVER_ROOT}/#{PACKAGE_NAME} #{SERVER_ROOT}/#{PACKAGE_NAME}_old;
-    mv /tmp/#{MAP_NAME} #{SERVER_ROOT}/#{PACKAGE_NAME};
+    mv /tmp/#{PACKAGE_NAME} #{SERVER_ROOT}/#{PACKAGE_NAME};
     start osrm;
     echo '#{log_msg}' >> #{SERVER_ROOT}/log/deploy.log;
   EOF
