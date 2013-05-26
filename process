@@ -16,6 +16,7 @@ DATA_FOLDER = ROOT+'/var'
 REPLICATION_FOLDER = 'replicate'
 PROFILES = ['bicycle']
 PROFILES_FOLDER = ROOT+'/Project-OSRM/profiles'
+INI_FOLDER = "#{ROOT}/ini"
 MAP_NAME = 'map'
 POLYGON = ROOT+"/var/#{MAP_NAME}.poly"
 PACKAGE_NAME = 'data'
@@ -26,6 +27,9 @@ SERVER = 'routes.ibikecph.dk'
 SERVER_ROOT = '/home/osm'
 RENDER_OPTIONS = 'z=9-17 bbox=7.64,54.33,13.37,57.98 map=solar'
 SERVER_BIN_PATH = SERVER_ROOT + '/Project-OSRM'
+OSRM_BASE_PORT = 5000
+OSRM_IP = "127.0.0.1"
+OSRM_THREADS = 1
 
 Savon.configure do |config|
   config.log = false
@@ -59,22 +63,50 @@ end
 def process
   run_cmd "rm -rf #{DATA_FOLDER}/#{PACKAGE_NAME}"
   run_cmd "mkdir -p #{DATA_FOLDER}/#{PACKAGE_NAME}"
+  timestamp = Time.now
   Dir.chdir "#{DATA_FOLDER}" do
     for profile in PROFILES do
       puts '----'
-      puts "Processing profile: #{profile}"
-      profile_path = "#{PROFILES_FOLDER}/#{profile}.lua"
-      run_cmd "rm -rf #{MAP_NAME}.osrm*"
-      puts
-      run_cmd "#{BIN_PATH}/osrm-extract #{OSM_FILE} #{profile_path}"
-      puts
-      run_cmd "#{BIN_PATH}/osrm-prepare #{MAP_NAME}.osrm #{MAP_NAME}.osrm.restrictions #{profile_path}"
-      puts
-      run_cmd "mkdir -p #{PACKAGE_NAME}/#{profile}; mv #{MAP_NAME}.osrm* #{PACKAGE_NAME}/#{profile}/"
-      puts
+      time("Processing profile: #{profile}") do      
+        profile_path = "#{PROFILES_FOLDER}/#{profile}.lua"
+        run_cmd "rm -rf #{MAP_NAME}.osrm*"
+        puts
+        run_cmd "#{BIN_PATH}/osrm-extract #{OSM_FILE} #{profile_path}"
+        puts
+        run_cmd "#{BIN_PATH}/osrm-prepare #{MAP_NAME}.osrm #{MAP_NAME}.osrm.restrictions #{profile_path}"
+        puts
+        run_cmd "mkdir -p #{PACKAGE_NAME}/#{profile}; mv #{MAP_NAME}.osrm* #{PACKAGE_NAME}/#{profile}/"
+        run_cmd "echo '#{timestamp}' >> #{DATA_FOLDER}/#{PACKAGE_NAME}/#{profile}/#{MAP_NAME}.osrm.timestamp"
+      end
     end
   end
 end
+
+def write_config
+  port = OSRM_BASE_PORT
+  for profile in PROFILES do
+    write_ini profile, port
+    port = port + 1
+  end
+end
+
+def write_ini profile, port
+  s = <<-EOF
+    Threads = #{OSRM_THREADS}
+    IP = #{OSRM_IP}
+    Port = #{port}
+
+    hsgrData=#{MAP_NAME}.osrm.hsgr
+    nodesData=#{MAP_NAME}.osrm.nodes
+    edgesData=#{MAP_NAME}.osrm.edges
+    ramIndex=#{MAP_NAME}.osrm.ramIndex
+    fileIndex=#{MAP_NAME}.osrm.fileIndex
+    namesData=#{MAP_NAME}.osrm.names
+    timestamp=#{MAP_NAME}.osrm.timestamp
+  EOF
+  File.open( "#{DATA_FOLDER}/#{PACKAGE_NAME}/#{profile}/server.ini", 'w') {|f| f.write( s ) }
+end
+
 
 def copy_binaries
   run_cmd "cp #{BIN_PATH}/osrm-* #{DATA_FOLDER}/#{PACKAGE_NAME}/"
@@ -156,6 +188,7 @@ def update
       end
       if ARGV.empty? || ARGV.include?('osrm')
         time("Preprocess OSRM data") { process }
+        time("Writing OSRM configuration") { write_config }
         time("Copy binaries") { copy_binaries }
         time("Sync data to route server") { rsync_osrm_data }
         time("Swap folders and restart OSRM") { deploy }
