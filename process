@@ -30,6 +30,7 @@ SERVER_BIN_PATH = SERVER_ROOT + '/Project-OSRM'
 OSRM_BASE_PORT = 5000
 OSRM_IP = "127.0.0.1"
 OSRM_THREADS = 1
+IMPORT_STYLE_FILE = "#{ROOT}/cphbikes/data/cphbikes.style"
 
 Savon.configure do |config|
   config.log = false
@@ -117,7 +118,9 @@ def rsync_osrm_data
 end
 
 def postgres
-  run_cmd "osm2pgsql -d osm -U osm -c -C8000 --number-processes=4 #{DATA_FOLDER}/#{OSM_FILE}"
+  run_cmd 'psql -U osm -d osm -c "DROP TABLE IF EXISTS planet_osm_line CASCADE;"'
+  run_cmd "osm2pgsql -d osm -U osm -c -C8000 --number-processes=4 --style #{IMPORT_STYLE_FILE} #{DATA_FOLDER}/#{OSM_FILE}"
+  run_cmd "psql -U osm -f cphbikes/data/highroad/high_road_views-setup.pgsql osm"
 end
 
 def remove_tiles
