@@ -25,12 +25,13 @@ NEWFILE = "#{MAP_NAME}_new.osm.pbf"
 USER = 'root'
 SERVER = 'routes.ibikecph.dk'
 SERVER_ROOT = '/home/osm'
-RENDER_OPTIONS = 'z=9-17 bbox=7.64,54.33,13.37,57.98 map=solar'
+RENDER_OPTIONS = 'z=9-17 bbox=7.64,54.33,13.37,57.98 map=ibikecph'
 SERVER_BIN_PATH = SERVER_ROOT + '/Project-OSRM'
 OSRM_BASE_PORT = 5000
 OSRM_IP = "127.0.0.1"
 OSRM_THREADS = 1
-IMPORT_STYLE_FILE = "#{ROOT}/cphbikes/data/cphbikes.style"
+IMPORT_STYLE_FILE = "#{ROOT}/style/cphbikes/data/cphbikes.style"
+HIGHROAD_SETUP_FILE = "#{ROOT}/style/cphbikes/data/highroad/high_road_views-setup.pgsql"
 
 Savon.configure do |config|
   config.log = false
@@ -120,7 +121,7 @@ end
 def postgres
   run_cmd 'psql -U osm -d osm -c "DROP TABLE IF EXISTS planet_osm_line CASCADE;"'
   run_cmd "osm2pgsql -d osm -U osm -c -C8000 --number-processes=4 --style #{IMPORT_STYLE_FILE} #{DATA_FOLDER}/#{OSM_FILE}"
-  run_cmd "psql -U osm -f cphbikes/data/highroad/high_road_views-setup.pgsql osm"
+  run_cmd "psql -U osm -f #{HIGHROAD_SETUP_FILE} osm"
 end
 
 def remove_tiles
