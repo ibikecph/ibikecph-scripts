@@ -11,31 +11,32 @@ PASSWORD = config['password']
 SERVER_ID = config['server_id']
 
 ROOT = File.expand_path '~'
-BIN_PATH  = ROOT+'/Project-OSRM/build'
+BIN_PATH  = ROOT+'/osrm-backend/build'
 DATA_FOLDER = ROOT+'/var'
 REPLICATION_FOLDER = 'replicate'
-PROFILES = ['bicycle','cargobike']
-PROFILES_FOLDER = ROOT+'/Project-OSRM/profiles'
+PROFILES = ['fast','cargo','green']
+PROFILES_FOLDER = ROOT+'/osrm-backend/profiles'
 INI_FOLDER = "#{ROOT}/ini"
 MAP_NAME = 'map'
 POLYGON = ROOT+"/var/#{MAP_NAME}.poly"
 PACKAGE_NAME = 'data'
 OSM_FILE = "#{MAP_NAME}.osm.pbf"
 NEWFILE = "#{MAP_NAME}_new.osm.pbf"
-USER = 'root'
-SERVER = 'routes.ibikecph.dk'
+USER = 'osm'
+SERVER = '77.66.112.7'
 SERVER_ROOT = '/home/osm'
 RENDER_OPTIONS = 'z=9-17 bbox=7.64,54.33,13.37,57.98 map=ibikecph'
 SERVER_BIN_PATH = SERVER_ROOT + '/Project-OSRM'
 OSRM_BASE_PORT = 5000
 OSRM_IP = "127.0.0.1"
 OSRM_THREADS = 1
-IMPORT_STYLE_FILE = "#{ROOT}/style/cphbikes/data/cphbikes.style"
-HIGHROAD_SETUP_FILE = "#{ROOT}/style/cphbikes/data/highroad/high_road_views-setup.pgsql"
+IMPORT_STYLE_FILE = "#{ROOT}/ibikecph-carto/tools/osm2pgsql.style"
+TAG_TRANSFORM_FILE = "#{ROOT}/ibikecph-carto/tools/import.lua"
+CREATE_INDEX_FILE = "#{ROOT}/ibikecph-carto/tools/create_indexes.sql"
 
-Savon.configure do |config|
-  config.log = false
-end
+#Savon.configure do |config|
+#  config.log = false
+#end
 
 HTTPI.log = false
 
@@ -55,9 +56,9 @@ def run_cmd cmd
   raise "Failed to run command: #{cmd}" unless system cmd
 end
 
-def replicate
+def update_osm_data
   Dir.chdir DATA_FOLDER do
-    run_cmd "osmosis --read-replication-interval workingDirectory=#{REPLICATION_FOLDER} --simplify-change --read-pbf file=#{OSM_FILE} --apply-change --bounding-polygon file=#{POLYGON} --write-pbf file=#{NEWFILE} omitmetadata=true"
+    run_cmd "osmupdate #{OSM_FILE} #{NEWFILE} -B=#{POLYGON}"
     FileUtils.mv NEWFILE, OSM_FILE
   end
 end
@@ -73,40 +74,28 @@ def process
         profile_path = "#{PROFILES_FOLDER}/#{profile}.lua"
         run_cmd "rm -rf #{MAP_NAME}.osrm*"
         puts
-        run_cmd "#{BIN_PATH}/osrm-extract #{OSM_FILE} #{profile_path}"
+        run_cmd "#{BIN_PATH}/osrm-extract #{OSM_FILE} --profile #{profile_path}"
         puts
-        run_cmd "#{BIN_PATH}/osrm-prepare #{MAP_NAME}.osrm #{MAP_NAME}.osrm.restrictions #{profile_path}"
+        run_cmd "#{BIN_PATH}/osrm-prepare #{MAP_NAME}.osrm --profile #{profile_path}"
         puts
         run_cmd "mkdir -p #{PACKAGE_NAME}/#{profile}; mv #{MAP_NAME}.osrm* #{PACKAGE_NAME}/#{profile}/"
-        run_cmd "echo '#{timestamp}' >> #{DATA_FOLDER}/#{PACKAGE_NAME}/#{profile}/#{MAP_NAME}.osrm.timestamp"
+        #run_cmd "echo '#{timestamp}' >> #{DATA_FOLDER}/#{PACKAGE_NAME}/#{profile}/#{MAP_NAME}.osrm.timestamp"
       end
     end
   end
 end
 
-def write_config
+def write_options
   port = OSRM_BASE_PORT
   for profile in PROFILES do
-    write_ini profile, port
+    write_options_for_profile profile, port
     port = port + 1
   end
 end
 
-def write_ini profile, port
-  s = <<-EOF
-    Threads = #{OSRM_THREADS}
-    IP = #{OSRM_IP}
-    Port = #{port}
-
-    hsgrData=#{MAP_NAME}.osrm.hsgr
-    nodesData=#{MAP_NAME}.osrm.nodes
-    edgesData=#{MAP_NAME}.osrm.edges
-    ramIndex=#{MAP_NAME}.osrm.ramIndex
-    fileIndex=#{MAP_NAME}.osrm.fileIndex
-    namesData=#{MAP_NAME}.osrm.names
-    timestamp=#{MAP_NAME}.osrm.timestamp
-  EOF
-  File.open( "#{DATA_FOLDER}/#{PACKAGE_NAME}/#{profile}/server.ini", 'w') {|f| f.write( s ) }
+def write_options_for_profile profile, port
+  s = "--threads #{OSRM_THREADS} --ip #{OSRM_IP} --port #{port}"
+  File.open( "#{DATA_FOLDER}/#{PACKAGE_NAME}/#{profile}/osrm-routed.options", 'w') {|f| f.write( s ) }
 end
 
 
@@ -118,10 +107,10 @@ def rsync_osrm_data
   run_cmd "rsync -r --delete --force #{DATA_FOLDER}/#{PACKAGE_NAME} #{USER}@#{SERVER}:/tmp/"
 end
 
-def postgres
+def import_to_postgres
   run_cmd 'psql -U osm -d osm -c "DROP TABLE IF EXISTS planet_osm_line CASCADE;"'
-  run_cmd "osm2pgsql -d osm -U osm -c -C8000 --number-processes=4 --style #{IMPORT_STYLE_FILE} #{DATA_FOLDER}/#{OSM_FILE}"
-  run_cmd "psql -U osm -f #{HIGHROAD_SETUP_FILE} osm"
+  run_cmd "osm2pgsql -U osm -d osm --cache 80000 --style #{IMPORT_STYLE_FILE} --tag-transform-script #{TAG_TRANSFORM_FILE} #{DATA_FOLDER}/#{OSM_FILE}"
+  run_cmd "psql -U osm -d osm -f #{CREATE_INDEX_FILE}"
 end
 
 def remove_tiles
@@ -152,13 +141,14 @@ def sync_tiles
 end
 
 def deploy
+  # note: /etc/sudoer must allow the osm user to run 'sudo start/stop osrm' without password
   log_msg = "OSRM update deployed at #{Time.now}"
   cmd = <<-EOF
     rm -rf #{SERVER_ROOT}/#{PACKAGE_NAME}_old;
-    stop osrm;
+    sudo stop osrm;
     mv #{SERVER_ROOT}/#{PACKAGE_NAME} #{SERVER_ROOT}/#{PACKAGE_NAME}_old;
     mv /tmp/#{PACKAGE_NAME} #{SERVER_ROOT}/#{PACKAGE_NAME};
-    start osrm;
+    sudo start osrm;
     echo '#{log_msg}' >> #{SERVER_ROOT}/log/deploy.log;
   EOF
   run_cmd %{ssh #{USER}@#{SERVER} "#{cmd}" }
@@ -187,21 +177,29 @@ def update
     begin
       run_cmd "df -h"
       run_cmd "free -m"
-      if ARGV.empty? || ARGV.include?('osm')
-        time("Updating OSM data") { replicate }
+      if ARGV.include?('osm')
+        time("Updating OSM data") { update_osm_data }
       end
-      if ARGV.empty? || ARGV.include?('osrm')
+      if ARGV.include?('db') || ARGV.include?('tiles')
+        time("Import to Postgres") { import_to_postgres }
+      end
+      if ARGV.include?('osrm')
         time("Preprocess OSRM data") { process }
-        time("Writing OSRM configuration") { write_config }
+        time("Writing OSRM options") { write_options }
         time("Copy binaries") { copy_binaries }
-        time("Sync data to route server") { rsync_osrm_data }
-        time("Swap folders and restart OSRM") { deploy }
       end
-      if ARGV.empty? || ARGV.include?('tiles')
-        time("Import to Postgres") { postgres }
+      if ARGV.include?('tiles')
+        # import to db happens above
         time("Render meta-tiles") { render_tiles }
         time("Remove old tiles") { remove_tiles }
         time("Convert meta-tiles") { convert_tiles }
+        time("Sync tiles to tiles server") { sync_tiles }
+      end
+      if ARGV.include?('deploy_osrm')
+        time("Sync data to route server") { rsync_osrm_data }
+        time("Swap folders and restart OSRM") { deploy }
+      end
+      if ARGV.include?('deploy_tiles')
         time("Sync tiles to tiles server") { sync_tiles }
       end
     rescue Exception => e
