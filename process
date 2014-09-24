@@ -90,7 +90,6 @@ def process
 end
 
 def write_options
-  port = OSRM_BASE_PORT
   PROFILES.each_pair do |t|
     write_options_for_profile t[0], t[1]
   end
