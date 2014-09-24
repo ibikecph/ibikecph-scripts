@@ -75,7 +75,7 @@ def process
   Dir.chdir "#{DATA_FOLDER}" do
     for profile in PROFILES.keys do
       time("Processing profile: #{profile}") do      
-        profile_path = "#{PROFILES_FOLDER}/bicycle_#{profile}.lua"
+        profile_path = "#{PROFILES_FOLDER}/#{profile}.lua"
         run_cmd "rm -rf #{MAP_NAME}.osrm*"
         puts
         run_cmd "#{BIN_PATH}/osrm-extract #{OSM_FILE} --profile #{profile_path}"
@@ -194,6 +194,7 @@ def update
     begin
       if ARGV.include?('info')
         run_cmd "df -h"
+        run_cmd "df -ih"
         run_cmd "free -m"
       end
       if ARGV.include?('osm')
