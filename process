@@ -14,7 +14,7 @@ ROOT = File.expand_path '~'
 BIN_PATH  = ROOT+'/osrm-backend/build'
 DATA_FOLDER = ROOT+'/var'
 REPLICATION_FOLDER = 'replicate'
-PROFILES = ['fast','cargo','green']
+PROFILES = { 'fast' => 5000, 'cargo' => 5001, 'green' => 5002 }
 PROFILES_FOLDER = ROOT+'/osrm-backend/profiles'
 INI_FOLDER = "#{ROOT}/ini"
 MAP_NAME = 'map'
@@ -25,9 +25,14 @@ NEWFILE = "#{MAP_NAME}_new.osm.pbf"
 USER = 'osm'
 SERVER = '77.66.112.7'
 SERVER_ROOT = '/home/osm'
-RENDER_OPTIONS = 'z=9-17 bbox=7.64,54.33,13.37,57.98 map=ibikecph'
+RENDER_OPTIONS = [
+  'z=0-8 bbox=-180,-85,180,85 map=ibikecph_web',
+  'z=9-17 bbox=7.5,54.5,15.5,57.9 map=ibikecph_web',
+
+  'z=0-8 bbox=-180,-85,180,85 map=ibikecph_retina',
+  'z=9-17 bbox=7.5,54.5,15.5,57.9 map=ibikecph_retina'
+]
 SERVER_BIN_PATH = SERVER_ROOT + '/Project-OSRM'
-OSRM_BASE_PORT = 5000
 OSRM_IP = "127.0.0.1"
 OSRM_THREADS = 1
 IMPORT_STYLE_FILE = "#{ROOT}/ibikecph-carto/tools/osm2pgsql.style"
@@ -68,10 +73,9 @@ def process
   run_cmd "mkdir -p #{DATA_FOLDER}/#{PACKAGE_NAME}"
   timestamp = Time.now
   Dir.chdir "#{DATA_FOLDER}" do
-    for profile in PROFILES do
-      puts '----'
+    for profile in PROFILES.keys do
       time("Processing profile: #{profile}") do      
-        profile_path = "#{PROFILES_FOLDER}/#{profile}.lua"
+        profile_path = "#{PROFILES_FOLDER}/bicycle_#{profile}.lua"
         run_cmd "rm -rf #{MAP_NAME}.osrm*"
         puts
         run_cmd "#{BIN_PATH}/osrm-extract #{OSM_FILE} --profile #{profile_path}"
@@ -79,7 +83,7 @@ def process
         run_cmd "#{BIN_PATH}/osrm-prepare #{MAP_NAME}.osrm --profile #{profile_path}"
         puts
         run_cmd "mkdir -p #{PACKAGE_NAME}/#{profile}; mv #{MAP_NAME}.osrm* #{PACKAGE_NAME}/#{profile}/"
-        #run_cmd "echo '#{timestamp}' >> #{DATA_FOLDER}/#{PACKAGE_NAME}/#{profile}/#{MAP_NAME}.osrm.timestamp"
+        puts
       end
     end
   end
@@ -87,9 +91,8 @@ end
 
 def write_options
   port = OSRM_BASE_PORT
-  for profile in PROFILES do
-    write_options_for_profile profile, port
-    port = port + 1
+  PROFILES.each_pair do |t|
+    write_options_for_profile t[0], t[1]
   end
 end
 
@@ -104,40 +107,54 @@ def copy_binaries
 end
 
 def rsync_osrm_data
+  run_cmd "rm -rf #{USER}@#{SERVER}:/tmp/data"    # remove left-overs if any
   run_cmd "rsync -r --delete --force #{DATA_FOLDER}/#{PACKAGE_NAME} #{USER}@#{SERVER}:/tmp/"
 end
 
 def import_to_postgres
-  run_cmd 'psql -U osm -d osm -c "DROP TABLE IF EXISTS planet_osm_line CASCADE;"'
-  run_cmd "osm2pgsql -U osm -d osm --cache 80000 --style #{IMPORT_STYLE_FILE} --tag-transform-script #{TAG_TRANSFORM_FILE} #{DATA_FOLDER}/#{OSM_FILE}"
+  run_cmd "osm2pgsql -U osm -d osm --slim --style #{IMPORT_STYLE_FILE} --tag-transform-script #{TAG_TRANSFORM_FILE} #{DATA_FOLDER}/#{OSM_FILE}"
   run_cmd "psql -U osm -d osm -f #{CREATE_INDEX_FILE}"
 end
 
+def remove_metatiles
+#  run_cmd "rm -rf /tiles/meta/web/*"
+#  run_cmd "rm -rf /tiles/meta/retina/*"
+end
+
 def remove_tiles
-  run_cmd "rm -rf /tiles/plain/*"
+  run_cmd "rm -rf /tiles/plain/web/*"
+  run_cmd "rm -rf /tiles/plain/retina/*"
+#  run_cmd "rm -rf /tiles/plain/background/*"
 end
 
 def render_tiles
-  run_cmd "tirex-batch #{RENDER_OPTIONS}"
+  RENDER_OPTIONS.each do |options|
+    run_cmd "tirex-batch #{options}"
+  end
+
   raw = ''
   (20*60).times do |i|
     sleep 60
     raw = `tirex-status --raw`
     size = /"size" : (\d+)/.match(raw)[1].to_i
-    if i%30 == 0
+    #if i%30 == 0
       puts "#{size} tiles left to render, at #{Time.now}"
-    end
+    #end
     return if size==0
   end
   raise "Rendering timed out! Last tirex-status raw: #{raw}"
 end
 
 def convert_tiles
-  run_cmd "#{ROOT}/meta2tile /tiles/meta /tiles/plain"
+  run_cmd "#{ROOT}/meta2tile /tiles/meta/web /tiles/plain/web"
+  run_cmd "#{ROOT}/meta2tile /tiles/meta/retina /tiles/plain/retina"
+#  run_cmd "#{ROOT}/meta2tile /tiles/meta/background /tiles/plain/background"
 end
 
 def sync_tiles
-  run_cmd "rsync -r --ignore-times /tiles/plain/ tiles.ibikecph.dk:/tiles/plain/"
+  run_cmd "rsync -r --ignore-times /tiles/plain/ root@tiles.ibikecph.dk:/tiles/new/"
+  run_cmd %{ssh root@tiles.ibikecph.dk "mv /tiles/current /tiles/old; mv /tiles/new /tiles/current"}
+#  run_cmd %{ssh root@tiles.ibikecph.dk "nohup rm -r /tiles/old >> /dev/null 2>&1 < /dev/null &"}
 end
 
 def deploy
@@ -175,12 +192,14 @@ def update
   puts '---------------------------------------'
   time("Updating") do
     begin
-      run_cmd "df -h"
-      run_cmd "free -m"
+      if ARGV.include?('info')
+        run_cmd "df -h"
+        run_cmd "free -m"
+      end
       if ARGV.include?('osm')
         time("Updating OSM data") { update_osm_data }
       end
-      if ARGV.include?('db') || ARGV.include?('tiles')
+      if ARGV.include?('db')
         time("Import to Postgres") { import_to_postgres }
       end
       if ARGV.include?('osrm')
@@ -193,24 +212,22 @@ def update
         time("Render meta-tiles") { render_tiles }
         time("Remove old tiles") { remove_tiles }
         time("Convert meta-tiles") { convert_tiles }
-        time("Sync tiles to tiles server") { sync_tiles }
       end
-      if ARGV.include?('deploy_osrm')
+      if ARGV.include?('deploy:osrm')
         time("Sync data to route server") { rsync_osrm_data }
         time("Swap folders and restart OSRM") { deploy }
       end
-      if ARGV.include?('deploy_tiles')
+      if ARGV.include?('deploy:tiles')
         time("Sync tiles to tiles server") { sync_tiles }
       end
+
     rescue Exception => e
       puts "*** An error occurred:"
       puts e
     ensure
-      if ARGV.empty? || ARGV.include?('shutdown')
+      if ARGV.include?('shutdown')
         time("Shutdown") { shutdown }
       end
     end
   end
 end
-
-update
