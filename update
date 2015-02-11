@@ -1,7 +1,10 @@
 #!/usr/bin/ruby
 
 require 'rubygems'
-require 'savon'
+require 'net/http'
+require 'net/https'
+require 'yaml'
+require 'json'
 
 config = YAML.load_file('update.yml')
 
@@ -10,74 +13,94 @@ PASSWORD = config['password']
 SERVER_ID = config['server_id']
 
 SERVER_USER = 'osm'
-SERVER_DOMAIN = 'tech.ibikecph.dk'
+SERVER_DOMAIN = 'worker-v1.ibikecph.dk'
 SERVER_ROOT = '/home/osm'
 SERVER_COMMAND = 'ibikecph/process osm osrm shutdown'    #skipping tiles for now. to run the full update cycle, simply use 'update'
+API_HOSTNAME = 'https://cloudpanel.cloud.dk'
 
-Savon.configure do |config|
-  config.log = false
-end
-
-HTTPI.log = false
-
+#HTTPI.log = false
 
 class UpdateScheduler
   
-  def initialize
-    @client = Savon::Client.new do
-      wsdl.document = "https://api.cloud.dk/?wsdl"
-      http.auth.basic USERNAME, PASSWORD
-      http.auth.ssl.verify_mode = :none
+  def get_status
+    uri = URI("#{API_HOSTNAME}/virtual_machines/#{SERVER_ID}/status.json")
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = true
+    request = Net::HTTP::Get.new(uri.path)
+    request.basic_auth USERNAME, PASSWORD
+    response = http.start {|http| http.request(request) }
+    check_response response
+    status = JSON.parse(response.body).first['virtual_machine']
+    if status['locked'] == false
+      if status['booted'] == true
+        :up
+      else
+        :down
+      end
+    else
+      :pending
     end
   end
 
-  def get_status
-    response = @client.request :get_server, :body => { 'server_id' => SERVER_ID }
-    response.body[:get_server_response][:get_server_return][:status]
+  def up?
+    get_status == :up
   end
 
   def wait_for_ssh
+    puts 'Waiting for SSH'
     600.times do
-       return true if system %{ssh #{SERVER_USER}@#{SERVER_DOMAIN} "whoami" 2>&1 > /dev/null}
-       sleep 1
+      if system %{ssh #{SERVER_USER}@#{SERVER_DOMAIN} "whoami" 2>&1 > /dev/null}
+        puts 'Server ready'
+        return
+      end
+      sleep 1
     end
     raise "Timeout while waiting for SSH"
   end  
 
-  def launch
-    puts 'Launching server'
-    @client.request :start_server, :body => { 'server_id' => SERVER_ID }
+  def check_response response
+    raise "API response code #{response.code}" unless [200,201].include? response.code.to_i
   end
 
-  def ensure_up
-    if get_status=='5'  #stopped?
-      launch
-    else
-      puts 'Server already running'
-    end
-    puts 'Waiting for SSH'
-    wait_for_ssh
-    puts 'Server ready'
+  def startup
+    uri = URI("#{API_HOSTNAME}/virtual_machines/#{SERVER_ID}/startup.json")
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = true
+    request = Net::HTTP::Post.new(uri.path)
+    request.basic_auth USERNAME, PASSWORD
+    response = http.start {|http| http.request(request) }
+    check_response response
   end
   
   def shutdown
-    puts 'Shutting down server'
-    @client.request :stop_server, :body => { 'server_id' => SERVER_ID, 'stop_method' => 1 }
-    puts 'Server was shut down'
-  end
-
-
-
-  def down
-    puts "--------"
-    puts "Shutting down update server at #{Time.now}"  # 1=graceful shutdown, 2=kill
-    @client.request :stop_server, :body => { 'server_id' => SERVER_ID, 'stop_method' => 1 }
+    uri = URI("#{API_HOSTNAME}/virtual_machines/#{SERVER_ID}/shutdown.json")
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = true
+    request = Net::HTTP::Post.new(uri.path)
+    request.basic_auth USERNAME, PASSWORD
+    response = http.start {|http| http.request(request) }
+    check_response response
   end
 
   def up
     puts "--------"
-    puts "Launching update server at #{Time.now}"
-    ensure_up
+    unless up?
+      puts "Starting update server at #{Time.now}"
+      startup
+    else
+      puts "Update server already up"
+    end
+    wait_for_ssh
+  end
+
+  def down
+    puts "--------"
+    if up?
+      puts "Shutting down update server at #{Time.now}"
+      shutdown
+    else
+      puts "Update server already down"
+    end
   end
 
   def status
@@ -112,11 +135,11 @@ end
 scheduler = UpdateScheduler.new
 
 if ARGV[0]==nil
-  scheduler.update
-elsif ARGV[0]=='down'
-  scheduler.down
+  #scheduler.update
 elsif ARGV[0]=='up'
   scheduler.up
+elsif ARGV[0]=='down'
+  scheduler.down
 elsif ARGV[0]=='status'
   scheduler.status
 elsif ARGV[0]=='test'

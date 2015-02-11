@@ -23,7 +23,7 @@ PACKAGE_NAME = 'data'
 OSM_FILE = "#{MAP_NAME}.osm.pbf"
 NEWFILE = "#{MAP_NAME}_new.osm.pbf"
 USER = 'root'
-SERVER = 'routes.ibikecph.dk'
+SERVER = 'routes-v1.ibikecph.dk'
 SERVER_ROOT = '/home/osm'
 RENDER_OPTIONS = [
   'z=0-8 bbox=-180,-85,180,85 map=ibikecph_web',
@@ -147,9 +147,9 @@ def render_tiles
     sleep 60
     raw = `tirex-status --raw`
     size = /"size" : (\d+)/.match(raw)[1].to_i
-    #if i%30 == 0
+    if i%60 == 0
       puts "#{size} tiles left to render, at #{Time.now}"
-    #end
+    end
     return if size==0
   end
   raise "Rendering timed out! Last tirex-status raw: #{raw}"
@@ -167,7 +167,7 @@ def sync_tiles
 #  run_cmd %{ssh root@tiles.ibikecph.dk "nohup rm -r /tiles/old >> /dev/null 2>&1 < /dev/null &"}
 end
 
-def deploy
+def deploy_osrm
   log_msg = "OSRM update deployed at #{Time.now}"
   cmd = <<-EOF
     rm -rf #{SERVER_ROOT}/#{PACKAGE_NAME}_old;
@@ -181,13 +181,7 @@ def deploy
 end
 
 def shutdown
-  puts 'Shutting down'
-  client = Savon::Client.new do
-    wsdl.document = "https://api.cloud.dk/?wsdl"
-    http.auth.basic USERNAME, PASSWORD
-    http.auth.ssl.verify_mode = :none
-  end
-  client.request :stop_server, :body => { 'server_id' => SERVER_ID, 'stop_method' => 1 }
+  # TODO move start/stop of servers to separate util
 end
 
 def format_time total_seconds
@@ -203,6 +197,9 @@ def update
     begin
       run_cmd "df -h"
       run_cmd "free -m"
+      if ARGV.empty? || ARGV.include?('alive')
+        time("Alive") {}
+      end
       if ARGV.empty? || ARGV.include?('osm')
         time("Updating OSM data") { replicate }
       end
@@ -210,23 +207,27 @@ def update
         time("Preprocess OSRM data") { process }
         time("Writing OSRM configuration") { write_config }
         time("Copy binaries") { copy_binaries }
-        time("Sync data to route server") { rsync_osrm_data }
-        time("Swap folders and restart OSRM") { deploy }
       end
-      if ARGV.empty? || ARGV.include?('deploy')
-        time("Swap folders and restart OSRM") { deploy }
+      if ARGV.empty? || ARGV.include?('sync-osrm')
+        time("Sync data to route server") { rsync_osrm_data }
+      end
+      if ARGV.empty? || ARGV.include?('deploy-osrm')
+        time("Swap folders and restart OSRM") { deploy_osrm }
       end
       if ARGV.empty? || ARGV.include?('db')
         time("Import to Postgres") { postgres }
       end
+      if ARGV.include?('clean-tiles')
+        time("Remove old meta-tiles") { remove_metatiles }
+        time("Remove old tiles") { remove_tiles }
+      end
       if ARGV.empty? || ARGV.include?('tiles')
-#        time("Remove old meta-tiles") { remove_metatiles }
+        time("Remove old meta-tiles") { remove_metatiles }
         time("Remove old tiles") { remove_tiles }
         time("Render meta-tiles") { render_tiles }
         time("Convert meta-tiles") { convert_tiles }
-#        time("Sync tiles to tiles server") { sync_tiles }
       end
-      if ARGV.empty? || ARGV.include?('synctiles')
+      if ARGV.empty? || ARGV.include?('sync-tiles')
         time("Sync tiles to tiles server") { sync_tiles }
       end
 
