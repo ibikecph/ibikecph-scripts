@@ -197,8 +197,8 @@ def update
     begin
       run_cmd "df -h"
       run_cmd "free -m"
-      if ARGV.empty? || ARGV.include?('alive')
-        time("Alive") {}
+      if ARGV.empty? || ARGV.include?('test')
+        time("Test") {}
       end
       if ARGV.empty? || ARGV.include?('osm')
         time("Updating OSM data") { replicate }
