@@ -1,0 +1,12 @@
+---
+api_hostname: 'https://cloudpanel.cloud.dk'
+api_username: 'emil.tin@tmf.kk.dk'
+api_password: 'mypassword'
+ssh_user: 'root'
+servers:
+  worker: 
+      id: 'myserverid'
+      hostname: 'mydomain.dk'
+      update: '/home/osm/mycommand myoption'
+      log: '/home/osm/mylogfile.log'
+      
