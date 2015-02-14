@@ -1,0 +1,36 @@
+---
+debug: true
+log: '/home/osm/update.log'
+root: '/home/osm/'
+bin_folder: '/home/osm/project-osrm/build'
+data_folder: '/home/osm/var'
+replication_folder: '/home/osm/replicate'
+profiles_folder: '/home/osm/project-osrm/profiles'
+polygon: '/home/osm/var/map.poly'
+package_name: 'data'
+map_name: 'map'
+osm_file: 'map.osm.pbf'
+newfile: 'map_new.osm.pbf'
+profiles:
+  fast:
+      port: 5000
+      osrm_profile: /home/osm/project-osrm/profiles/bicycle_fast.lua'
+  cargo:
+    port: 5001
+    osrm_profile: /home/osm/project-osrm/profiles/bicycle_cargo.lua'
+  green:
+    port: 5002
+    osrm_profile: /home/osm/project-osrm/profiles/bicycle_green.lua'
+osrm_ip: '127.0.0.1'
+osrm_threads: 1
+import_style_file: '/home/osm/ibikecph-carto/tools/osm2pgsql.style'
+import_lua_file: '/home/osm/ibikecph-carto/tools/import.lua'
+render_tasks:
+  - 'z=0-8 bbox=-180,-85,180,85 map=ibikecph_web'
+  - 'z=9-17 bbox=7.5,54.5,15.5,57.9 map=ibikecph_web'
+  - 'z=0-8 bbox=-180,-85,180,85 map=ibikecph_retina'
+  - 'z=9-17 bbox=7.5,54.5,15.5,57.9 map=ibikecph_retina'
+server: 'routes-v1.ibikecph.dk'
+user: 'root'
+server_root: '/home/osm'
+server_bin_path: '/home/osm/project-osrm'

@@ -1,28 +1,11 @@
 # Handles cloud.dk server automation API
 # https://docs.onapp.com/display/33API/OnApp+3.3+API+Guide
+#
+# ssh keys must be setup beforehand so password is not needed
 
 require 'net/http'
-require 'yaml'
 require 'json'
-
-# Read configs from an yaml file, including API settings and list of servers
-class ServerConfig
-  attr_reader :hostname, :username, :password, :servers, :ssh_user
-  
-  def initialize path
-    raise "Config file '#{path} not found." unless File.exists? path
-    config = YAML.load_file(path)
-    @hostname = config['api_hostname']
-    @username = config['api_username']
-    @password = config['api_password']
-    @ssh_user = config['ssh_user']
-    @servers = config['servers']
-    raise "hostname missing from config!" unless @hostname
-    raise "username missing from config!" unless @username
-    raise "password missing from config!" unless @password
-    raise "servers missing from config!" unless @servers
-  end 
-end
+require_relative 'configuration'
 
 # Manages a single virtual server
 class Server
@@ -30,7 +13,7 @@ class Server
     @config = config
     raise "Config missing!" unless @config
     
-    @settings = config.servers[key.to_s]
+    @settings = config['servers'][key.to_s]
     raise "Settings for server #{key} missing!" unless @settings
 
     @id = @settings['id']
@@ -38,6 +21,9 @@ class Server
 
     @hostname = @settings['hostname']
     raise "Hostname id for server #{key} missing!" unless @hostname
+    
+    @ssh_user = @settings['ssh_user']
+    raise "SSH user for server #{key} missing!" unless @ssh_user    
   end
     
   def status
@@ -92,7 +78,7 @@ class Server
   def wait_for_ssh
     puts 'Waiting for SSH...'
     600.times do
-      if system %{ssh #{@config.ssh_user}@#{@hostname} "whoami" 2>&1 > /dev/null}
+      if system %{ssh -o PasswordAuthentication=no -q #{@ssh_user}@#{@hostname} "whoami" 2>&1 > /dev/null}
         puts 'SSH Ready'
         return
       end
@@ -106,28 +92,29 @@ class Server
     # run script in background using '&'
     # use nohup, so it's not terminated when we log out of ssh
     # to avoid ssh hanging, make sure to redirect all three stream: stdout, stderr, stdin
-    system %{ssh #{@config.ssh_user}@#{@config.hostname} "nohup #{cmd} 2>&1 < /dev/null &"}
+    system %{ssh #{@ssh_user}@#{@hostname} "nohup #{cmd} 2>&1 < /dev/null &"}
   end
     
   private
   
   def http_get call
-    uri = URI("#{@config.hostname}/virtual_machines/#{@id}/#{call}.json")
-    http = Net::HTTP.new(uri.host, uri.port)
-    http.use_ssl = true
-    request = Net::HTTP::Get.new(uri.path)
-    request.basic_auth @config.username, @config.password
-    response = http.start {|http| http.request(request) }
-    check_response response
-    response
+    http_call call, :get
   end
   
   def http_post call
-    uri = URI("#{@config.hostname}/virtual_machines/#{@id}/#{call}.json")
+    http_call call, :post
+  end
+
+  def http_call call, method=:get
+    uri = URI("#{@config['api_hostname']}/virtual_machines/#{@id}/#{call}.json")
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
-    request = Net::HTTP::Post.new(uri.path)
-    request.basic_auth @config.username, @config.password
+    if method == :post
+      request = Net::HTTP::Post.new(uri.path)
+    else
+      request = Net::HTTP::Get.new(uri.path)
+    end
+    request.basic_auth @config['api_username'], @config['api_password']
     response = http.start {|http| http.request(request) }
     check_response response
     response
