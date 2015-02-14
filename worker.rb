@@ -28,7 +28,7 @@ class Worker
   end
 
   def run_cmd cmd
-    puts cmd
+    puts "--> #{cmd}"
     raise "Failed to run command: #{cmd}" unless system cmd
   end
 
@@ -58,12 +58,12 @@ class Worker
           # using rm with * can be dangerous
           # we must be careful not to wipe the disk with something like "rm -r *"
           # appending .osrm gives some safety against this
-          base = basename path('osm_file')
-          run_cmd "rm -rf #{base}.osrm*"      # carefull with using *
+          map_base = basename path('osm_file')
+          run_cmd "rm -rf #{map_base}.osrm*"      # carefull with using *
           
-          run_cmd "#{path 'bin_folder'}/osrm-extract #{path 'osm_file'} #{path_from_string profile['file']}"
+          map_basename = File.basename 
           puts
-          run_cmd "#{path 'bin_folder'}/osrm-prepare #{@config['map_name']}.osrm #{@config['map_name']}.osrm.restrictions #{profile_name}"
+          run_cmd "#{path 'bin_folder'}/osrm-prepare #{map_base}.osrm #{map_base}.osrm.restrictions #{profile_name}"
           puts
           run_cmd "mkdir -p #{@config['package_name']}/#{profile_name}; mv #{@config['map_name']}.osrm* #{@config['package_name']}/#{profile_name}/"
           run_cmd "echo '#{timestamp}' >> #{path 'data_folder'}/#{@config['package_name']}/#{profile}/#{@config['map_name']}.osrm.timestamp"
