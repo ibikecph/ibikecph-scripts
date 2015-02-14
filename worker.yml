@@ -9,8 +9,8 @@ profiles_folder: '/home/osm/project-osrm/profiles'
 polygon: '/home/osm/var/map.poly'
 package_name: 'data'
 map_name: 'map'
-osm_file: 'map.osm.pbf'
-newfile: 'map_new.osm.pbf'
+osm_file: '/home/osm/var/map.osm.pbf'
+new_osm_file: '/home/osm/var/map_new.osm.pbf'
 profiles:
   fast:
     port: 5000

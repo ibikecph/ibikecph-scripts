@@ -31,8 +31,8 @@ class Worker
 
   def update_osm_data
     Dir.chdir @config['data_folder'] do
-      run_cmd "osmosis --read-replication-interval workingDirectory=#{@config['replication_folder']} --simplify-change --read-pbf file=#{@config['osm_file']} --apply-change --bounding-polygon file=#{@config['polygon']} --write-pbf file=#{@config['new_file']} omitmetadata=true"
-      FileUtils.mv @config['new_file'], @config['osm_file']
+      run_cmd "osmosis --read-replication-interval workingDirectory=#{@config['replication_folder']} --simplify-change --read-pbf file=#{@config['osm_file']} --apply-change --bounding-polygon file=#{@config['polygon']} --write-pbf file=#{@config['new_osm_file']} omitmetadata=true"
+      FileUtils.mv @config['new_osm_file'], @config['osm_file']
     end
   end
 
