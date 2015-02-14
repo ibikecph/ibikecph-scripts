@@ -1,3 +1,3 @@
 ---
-update_cmd: '/home/osm/ibikecph-scripts/-scripts/worker test shutdown'
+update_cmd: '/home/osm/ibikecph-scripts/worker test shutdown'
 log_path: '/home/osm/log/update.log'
