@@ -48,7 +48,7 @@ class Worker
     timestamp = Time.now
     # osrm writes output to current folder, so must set it to where we want them before processing
     Dir.chdir "#{path 'data_folder'}" do
-      @config['profiles'].each_pair do |profile_name,v|
+      @config['profiles'].each_pair do |profile_name,profile|
         time("Processing profile: #{profile_name}") do
           
           # using rm with * can be dangerous
@@ -57,7 +57,7 @@ class Worker
           base = basename path('osm_file')
           run_cmd "rm -rf #{base}.osrm*"      # carefull with using *
           
-          run_cmd "#{path 'bin_folder'}/osrm-extract #{path 'osm_file'} #{profile_name}"
+          run_cmd "#{path 'bin_folder'}/osrm-extract #{path 'osm_file'} #{profile['file']}"
           puts
           run_cmd "#{path 'bin_folder'}/osrm-prepare #{@config['map_name']}.osrm #{@config['map_name']}.osrm.restrictions #{profile_name}"
           puts
