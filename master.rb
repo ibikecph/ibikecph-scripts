@@ -5,8 +5,8 @@ require File.join( File.dirname(__FILE__), 'server' )
 class Master
   def initialize
     # config files are loaded relative to working dir, not this file
-    @api_config = Configuration.new 'servers.yml'
-    @local_config = Configuration.new 'master.yml'
+    @api_config = Configuration.new 'servers.yml'   # relative to working dir
+    @local_config = Configuration.new File.join( File.dirname(__FILE__), 'master.yml' ) # in repo folder
     
     @worker = Server.new @api_config, 'worker_v1'
     @update_cmd = @local_config['update_cmd']

@@ -4,9 +4,8 @@ require File.join( File.dirname(__FILE__), 'server' )
 
 class Worker  
   def initialize
-    # config files are loaded relative to working dir, not this file
-    @api_config = Configuration.new 'servers.yml'
-    @config = Configuration.new 'worker.yml'
+    @api_config = Configuration.new 'servers.yml'   # relative to working dir
+    @config = Configuration.new File.join( File.dirname(__FILE__), 'worker.yml' ) # in repo folder
   end
 
   def time str, divider=:short, &block
