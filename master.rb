@@ -14,12 +14,12 @@ class Master
   end
   
   # Initiate the update on the worker
-  def initiate_update worker
+  def initiate_update
     puts "--------"
     puts "Starting update at #{Time.now}"
-    worker.up
+    @worker.up
     puts "Initiating remote update at #{Time.now}."
-    if worker.initiate "#{@update_cmd} >> #{@log_path}"
+    if @worker.initiate "#{@update_cmd} >> #{@log_path}"
       puts 'OK'
       #we're done, remote script will handle shutdown after it finishes
     else
@@ -27,7 +27,8 @@ class Master
     end
   rescue Exception => e
     puts e
-    worker.shutdown
+    puts e.backtrace
+    @worker.shutdown
   ensure
     puts "\n\n"
   end
