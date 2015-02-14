@@ -34,6 +34,13 @@ class Worker
     FileUtils.mv path('new_osm_file'), path('osm_file')
   end
   
+  def basename path
+    dir = File.dirname path
+    # File.basename only removes one extension, so 'fun.a.b' would result in 'fun.b', whereas we want just 'fun'
+    base = path.match(/[^\.]*/).to_s))
+    File.join( dir, base )
+  end
+    
   def process
     run_cmd "rm -rf #{path 'data_folder'}/#{@config['package_name']}"
     run_cmd "mkdir -p #{path 'data_folder'}/#{@config['package_name']}"
@@ -42,10 +49,9 @@ class Worker
     Dir.chdir "#{path 'data_folder'}" do
       @config['profiles'].each_pair do |profile_name,v|
         time("Processing profile: #{profile_name}") do
-          
-           # rm and * can be dangerous. be careful not to wipe the disk with something like "rm -r *"
-           # appending .osrm gives some safety against this
-          base = File.join( File.dirname(path('osm_file')), File.basename(path('osm_file')))  #strip extension
+          # rm and * can be dangerous. be careful not to wipe the disk with something like "rm -r *"
+          # appending .osrm gives some safety against this
+          base = basename path('osm_file')
           puts base
           exit
           run_cmd "rm -rf #{base}.osrm*"
