@@ -1,6 +1,6 @@
 # Launches the worker and initiates updates
 
-require File.join( File.dirname(__FILE__), 'server' )
+require File.expand_path( File.join( File.dirname(__FILE__), 'server' ) )
 
 class Master
   def initialize

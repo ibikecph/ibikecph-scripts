@@ -1,5 +1,5 @@
 #!/usr/bin/ruby
 
-require File.join( File.dirname(__FILE__), 'worker' )
+require File.expand_path( File.join( File.dirname(__FILE__), 'worker' ) )
 worker = Worker.new
 worker.run ARGV

@@ -1,4 +1,4 @@
 #!/usr/bin/ruby
-require File.join( File.dirname(__FILE__), 'master' )
+require File.expand_path( File.join( File.dirname(__FILE__), 'master' ) )
 master = Master.new
 master.run ARGV

@@ -1,6 +1,6 @@
 # runs on the worker and handles actual processing og osrm data and tiles
 
-require File.join( File.dirname(__FILE__), 'server' )
+require File.expand_path( File.join( File.dirname(__FILE__), 'server' ) )
 
 class Worker  
   def initialize

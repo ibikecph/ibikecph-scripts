@@ -7,7 +7,7 @@ require 'rubygems'
 require 'net/http'
 require 'net/https'
 require 'json'
-require File.join( File.dirname(__FILE__), 'configuration' )
+require File.expand_path( File.join( File.dirname(__FILE__), 'configuration' ) )
 
 # Manages a single virtual server
 class Server
