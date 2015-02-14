@@ -36,8 +36,8 @@ class Worker
   
   def basename path
     dir = File.dirname path
-    # File.basename only removes one extension, so 'fun.a.b' would result in 'fun.b', whereas we want just 'fun'
-    base = path.match(/[^\.]*/).to_s))
+    # File.basename with '.*' argument only removes one extension, so 'fun.a.b' would result in 'fun.b', whereas we want just 'fun'
+    base = File.basename(path).match(/[^\.]*/).to_s
     File.join( dir, base )
   end
     
