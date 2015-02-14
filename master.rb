@@ -20,8 +20,8 @@ class Master
     @worker.up
     puts "Initiating remote update at #{Time.now}."
     if @worker.initiate "#{@update_cmd} >> #{@log_path}"
-      puts 'OK'
-      #we're done, remote script will handle shutdown after it finishes
+      puts 'Remote update initiated, view log file on server to check progress'
+      #we're done, worker will shut itself down after it finishes
     else
       raise 'Failed to initiate remote update!'
     end

@@ -9,20 +9,14 @@ class Worker
     @config = Configuration.new File.join( File.dirname(__FILE__), 'worker.yml' ) # in repo folder
   end
 
-  def time str, divider=:short, &block
-    str += ': ' if str
+  def time str, &block
     start = Time.now
-    if divider==:long
-      puts '-'*50
-    else
-      puts '---------'
-    end
-    puts "#{str}Starting at #{start}"
+    puts "#{str}: Starting at #{start}"
     yield block
     finish = Time.now
     seconds = (Time.now - start).to_i
     formatted = format_time seconds
-    puts "#{str}Completed in #{seconds}s / #{formatted}, at #{finish}."
+    puts "#{str}: Completed in #{seconds}s / #{formatted}, at #{finish}."
   end
 
   def run_cmd cmd
@@ -41,16 +35,16 @@ class Worker
     run_cmd "mkdir -p #{@config['data_folder']}/#{@config['package_name']}"
     timestamp = Time.now
     Dir.chdir "#{@config['data_folder']}" do
-      @config['profiles'].each_pair do |k,v|
+      @config['profiles'].each_pair do |profile_name,v|
         puts '----'
-        time("Processing profile: #{k}") do      
+        time("Processing profile: #{profile_name}") do      
           run_cmd "rm -rf #{@config['map_name']}.osrm*"
           puts
-          run_cmd "#{@config['bin_folder']}/osrm-extract #{@config['osm_file']} #{v['osrm_profile']}"
+          run_cmd "#{@config['bin_folder']}/osrm-extract #{@config['osm_file']} #{profile_name}"
           puts
-          run_cmd "#{@config['bin_folder']}/osrm-prepare #{@config['map_name']}.osrm #{@config['map_name']}.osrm.restrictions #{v['osrm_profile']}"
+          run_cmd "#{@config['bin_folder']}/osrm-prepare #{@config['map_name']}.osrm #{@config['map_name']}.osrm.restrictions #{profile_name}"
           puts
-          run_cmd "mkdir -p #{@config['package_name']}/#{profile}; mv #{@config['map_name']}.osrm* #{@config['package_name']}/#{k}/"
+          run_cmd "mkdir -p #{@config['package_name']}/#{profile_name}; mv #{@config['map_name']}.osrm* #{@config['package_name']}/#{profile_name}/"
           run_cmd "echo '#{timestamp}' >> #{@config['data_folder']}/#{@config['package_name']}/#{profile}/#{@config['map_name']}.osrm.timestamp"
         end
       end
@@ -159,9 +153,21 @@ class Worker
     me = Server.new @api_config, :worker_v1
     me.shutdown
   end
-
+  
+  def divider len=nil
+    case len
+    when :long
+      puts '-'*60
+    when :short
+      puts '-'*30
+    else
+      puts '-'*15
+    end
+  end
+  
   def run argv
-    time(nil, :long) do
+    divider :long
+    time 'Update' do
       begin
         all = argv.include?('all')
 
@@ -170,36 +176,51 @@ class Worker
         #run_cmd "free -m"
 
         if all || argv.include?('osm')
+          divider
           time("Updating OSM data") { update_osm_data }
         end
         if all || argv.include?('osrm')
+          divider
           time("Preprocess OSRM data") { process }
+          divider
           time("Writing OSRM configuration") { write_config }
+          divider
           time("Copy binaries") { copy_binaries }
         end
         if all || argv.include?('sync-osrm')
+          divider
           time("Sync data to route server") { rsync_osrm_data }
         end
         if all || argv.include?('deploy-osrm')
+          divider
           time("Swap folders and restart OSRM") { deploy_osrm }
         end
         if all || argv.include?('db')
+          divider
           time("Import to Postgres") { postgres }
         end
         if argv.include?('clean-tiles')
+          divider
           time("Remove old meta-tiles") { remove_metatiles }
+          divider
           time("Remove old tiles") { remove_tiles }
         end
         if all || argv.include?('tiles')
+          divider
           time("Remove old meta-tiles") { remove_metatiles }
+          divider
           time("Remove old tiles") { remove_tiles }
+          divider
           time("Render meta-tiles") { render_tiles }
+          divider
           time("Convert meta-tiles") { convert_tiles }
         end
         if all || argv.include?('sync-tiles')
+          divider
           time("Sync tiles to tiles server") { sync_tiles }
         end
         if all || argv.include?('test')
+          divider
           time("Test") {}
         end
         
@@ -209,6 +230,7 @@ class Worker
         puts e.backtrace
       ensure
         if all || argv.include?('shutdown')
+          divider
           time("Shutdown") { shutdown }
         end
       end
