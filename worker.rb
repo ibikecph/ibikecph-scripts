@@ -55,7 +55,7 @@ class Worker
       @config['profiles'].each_pair do |profile_name,profile|
         time("Processing profile: #{profile_name}") do
           
-          # using rm with * can be dangerous
+          # using rm with -r and * can be dangerous
           # we must be careful not to wipe the disk with something like "rm -r *"
           # appending .osrm gives some safety against this
           map_base = basename path('osm_file')
