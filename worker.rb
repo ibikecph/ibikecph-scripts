@@ -10,8 +10,12 @@ class Worker
   end
   
   def path key
-    File.expand_path( File.join( @config['base_dir'], @config[key] ) )
+    path_from_string @config[key]
   end
+
+  def path_from_string path
+    File.expand_path( File.join( @config['base_dir'], path ) )
+  end  
   
   def time str, &block
     start = Time.now
@@ -57,7 +61,7 @@ class Worker
           base = basename path('osm_file')
           run_cmd "rm -rf #{base}.osrm*"      # carefull with using *
           
-          run_cmd "#{path 'bin_folder'}/osrm-extract #{path 'osm_file'} #{profile['file']}"
+          run_cmd "#{path 'bin_folder'}/osrm-extract #{path 'osm_file'} #{path_from_string profile['file']}"
           puts
           run_cmd "#{path 'bin_folder'}/osrm-prepare #{@config['map_name']}.osrm #{@config['map_name']}.osrm.restrictions #{profile_name}"
           puts
