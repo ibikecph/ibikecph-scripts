@@ -23,8 +23,8 @@ profiles:
     osrm_profile: /home/osm/project-osrm/profiles/bicycle_green.lua'
 osrm_ip: '127.0.0.1'
 osrm_threads: 1
-import_style_file: '/home/osm/ibikecph-carto/tools/osm2pgsql.style'
-import_lua_file: '/home/osm/ibikecph-carto/tools/import.lua'
+import_style_file: '/home/osm/ibikecph-scripts/-carto/tools/osm2pgsql.style'
+import_lua_file: '/home/osm/ibikecph-scripts/-carto/tools/import.lua'
 render_tasks:
   - 'z=0-8 bbox=-180,-85,180,85 map=ibikecph_web'
   - 'z=9-17 bbox=7.5,54.5,15.5,57.9 map=ibikecph_web'
