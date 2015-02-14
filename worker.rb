@@ -31,7 +31,7 @@ class Worker
   end
 
   def update_osm_data
-    pust "Existing map file #{@config['new_osm_file']} was last updated #{File.mtime(@config['new_osm_file'])}"
+    pust "Existing map file #{@config['osm_file']} was last updated #{File.mtime(@config['osm_file'])}"
     run_cmd "osmupdate #{@config['osm_file']} #{@config['new_osm_file']} -B=#{@config['polygon_file']}"
     FileUtils.mv @config['new_osm_file'], @config['osm_file']
   end
