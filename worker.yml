@@ -1,29 +1,29 @@
 ---
 debug: true
-log: '/home/osm/update.log'
-root: '/home/osm/'
-bin_folder: '/home/osm/osrm-backend/build'
-data_folder: '/home/osm/var'
-profiles_folder: '/home/osm/osrm-backend/profiles'
-polygon_file: '/home/osm/var/map.poly'
+base_dir: '/home/osm'
+log: 'update.log'
+bin_folder: 'osrm-backend/build'
+data_folder: 'var'
+profiles_folder: 'osrm-backend/profiles'
+polygon_file: 'var/map.poly'
 package_name: 'data'
-map_name: 'map'
-osm_file: '/home/osm/var/map.osm.pbf'
-new_osm_file: '/home/osm/var/map_new.osm.pbf'
+osrm_file: 'var/map.osrm'
+osm_file: 'var/map.osm.pbf'
+new_osm_file: 'var/map_new.osm.pbf'
 profiles:
   fast:
     port: 5000
-    osrm_profile: '/home/osm/osrm-backend/profiles/bicycle_fast.lua'
+    osrm_profile: 'osrm-backend/profiles/bicycle_fast.lua'
   cargo:
     port: 5001
-    osrm_profile: '/home/osm/osrm-backend/profiles/bicycle_cargo.lua'
+    osrm_profile: 'osrm-backend/profiles/bicycle_cargo.lua'
   green:
     port: 5002
-    osrm_profile: '/home/osm/osrm-backend/profiles/bicycle_green.lua'
+    osrm_profile: 'osrm-backend/profiles/bicycle_green.lua'
 osrm_ip: '127.0.0.1'
 osrm_threads: 1
-import_style_file: '/home/osm/ibikecph-scripts/-carto/tools/osm2pgsql.style'
-import_lua_file: '/home/osm/ibikecph-scripts/-carto/tools/import.lua'
+import_style_file: 'ibikecph-scripts/-carto/tools/osm2pgsql.style'
+import_lua_file: 'ibikecph-scripts/-carto/tools/import.lua'
 render_tasks:
   - 'z=0-8 bbox=-180,-85,180,85 map=ibikecph_web'
   - 'z=9-17 bbox=7.5,54.5,15.5,57.9 map=ibikecph_web'
@@ -32,4 +32,4 @@ render_tasks:
 server: 'routes-v1.ibikecph.dk'
 user: 'root'
 server_root: '/home/osm'
-server_bin_path: '/home/osm/osrm-backend'
+server_bin_path: 'osrm-backend'

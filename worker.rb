@@ -8,7 +8,11 @@ class Worker
     @api_config = Configuration.new 'servers.yml'   # relative to working dir
     @config = Configuration.new File.join( File.dirname(__FILE__), 'worker.yml' ) # in repo folder
   end
-
+  
+  def path key
+    File.expand_path( File.join( @config['base_dir'], @config[key] ) )
+  end
+  
   def time str, &block
     start = Time.now
     puts "#{str}: Starting at #{start}"
@@ -25,27 +29,31 @@ class Worker
   end
 
   def update_osm_data
-    puts "Existing map file #{@config['osm_file']} was last updated #{File.mtime(@config['osm_file'])}"
-    run_cmd "osmupdate #{@config['osm_file']} #{@config['new_osm_file']} -B=#{@config['polygon_file']}"
-    FileUtils.mv @config['new_osm_file'], @config['osm_file']
+    puts "Existing map file #{path 'osm_file'} was last updated #{File.mtime(path 'osm_file')}"
+    run_cmd "osmupdate #{path 'osm_file'} #{path 'new_osm_file'} -B=#{path 'polygon_file'}"
+    FileUtils.mv path('new_osm_file'), path('osm_file')
   end
-
+  
   def process
-    run_cmd "rm -rf #{@config['data_folder']}/#{@config['package_name']}"
-    run_cmd "mkdir -p #{@config['data_folder']}/#{@config['package_name']}"
+    run_cmd "rm -rf #{path 'data_folder'}/#{path 'package_name'}"
+    run_cmd "mkdir -p #{path 'data_folder'}/#{path 'package_name'}"
     timestamp = Time.now
-    Dir.chdir "#{@config['data_folder']}" do
+    # osrm writes output to current folder, so must set it to where we want them before processing
+    Dir.chdir "#{path 'data_folder'}" do
       @config['profiles'].each_pair do |profile_name,v|
-        puts '----'
-        time("Processing profile: #{profile_name}") do      
-          run_cmd "rm -rf #{@config['map_name']}.osrm*"
+        time("Processing profile: #{profile_name}") do
+          
+           # rm and * can be dangerous. be careful not to wipe the disk with something like "rm -r *"
+           # appending .osrm gives some safety against this
+          base = path 'osm_file'.chomp File.extname(path 'osm_file')  #strip extension
+          run_cmd "rm -rf #{base}.osrm*"
+          
+          run_cmd "#{path 'bin_folder'}/osrm-extract #{path 'osm_file'} #{profile_name}"
           puts
-          run_cmd "#{@config['bin_folder']}/osrm-extract #{@config['osm_file']} #{profile_name}"
-          puts
-          run_cmd "#{@config['bin_folder']}/osrm-prepare #{@config['map_name']}.osrm #{@config['map_name']}.osrm.restrictions #{profile_name}"
+          run_cmd "#{path 'bin_folder'}/osrm-prepare #{@config['map_name']}.osrm #{@config['map_name']}.osrm.restrictions #{profile_name}"
           puts
           run_cmd "mkdir -p #{@config['package_name']}/#{profile_name}; mv #{@config['map_name']}.osrm* #{@config['package_name']}/#{profile_name}/"
-          run_cmd "echo '#{timestamp}' >> #{@config['data_folder']}/#{@config['package_name']}/#{profile}/#{@config['map_name']}.osrm.timestamp"
+          run_cmd "echo '#{timestamp}' >> #{path 'data_folder'}/#{@config['package_name']}/#{profile}/#{@config['map_name']}.osrm.timestamp"
         end
       end
     end
@@ -71,21 +79,21 @@ class Worker
       namesData=#{@config['map_name']}.osrm.names
       timestamp=#{@config['map_name']}.osrm.timestamp
     EOF
-    File.open( "#{@config['data_folder']}/#{@config['package_name']}/#{profile}/server.ini", 'w') {|f| f.write( s ) }
+    File.open( "#{path 'data_folder'}/#{@config['package_name']}/#{profile}/server.ini", 'w') {|f| f.write( s ) }
   end
 
 
   def copy_binaries
-    run_cmd "cp #{@config['bin_folder']}/osrm-* #{@config['data_folder']}/#{@config['package_name']}/"
+    run_cmd "cp #{path 'bin_folder'}/osrm-* #{path 'data_folder'}/#{@config['package_name']}/"
   end
 
   def rsync_osrm_data
     run_cmd "rm -rf #{@config['user']}@#{@config['server']}:/tmp/data"    # remove left-overs if any
-    run_cmd "rsync -r --delete --force #{@config['data_folder']}/#{@config['package_name']} #{@config['user']}@#{@config['server']}:/tmp/"
+    run_cmd "rsync -r --delete --force #{path 'data_folder'}/#{@config['package_name']} #{@config['user']}@#{@config['server']}:/tmp/"
   end
 
   def postgres
-    run_cmd "osm2pgsql -d osm -U osm -c -C8000 --number-processes=5 --style #{@config['import_style_file']}  --tag-transform-script #{@config['import_lua_file']} #{@config['data_folder']}/#{@config['osm_file']}"
+    run_cmd "osm2pgsql -d osm -U osm -c -C8000 --number-processes=5 --style #{path 'import_style_file'}  --tag-transform-script #{path 'import_lua_file'} #{path 'data_folder'}/#{path 'osm_file'}"
   end
 
   def remove_metatiles
@@ -118,9 +126,9 @@ class Worker
   end
 
   def convert_tiles
-    run_cmd "#{@config['root']}/meta2tile /tiles/meta/web /tiles/plain/web"
-    run_cmd "#{@config['root']}/meta2tile /tiles/meta/retina /tiles/plain/retina"
-  #  run_cmd "#{@config['root']}/meta2tile /tiles/meta/background /tiles/plain/background"
+    run_cmd "#{path 'root'}/meta2tile /tiles/meta/web /tiles/plain/web"
+    run_cmd "#{path 'root'}/meta2tile /tiles/meta/retina /tiles/plain/retina"
+  #  run_cmd "#{path 'root'}/meta2tile /tiles/meta/background /tiles/plain/background"
   end
 
   def sync_tiles
