@@ -61,7 +61,6 @@ class Worker
           map_base = basename path('osm_file')
           run_cmd "rm -rf #{map_base}.osrm*"      # carefull with using *
           
-          map_basename = File.basename 
           puts
           run_cmd "#{path 'bin_folder'}/osrm-prepare #{map_base}.osrm #{map_base}.osrm.restrictions #{profile_name}"
           puts
