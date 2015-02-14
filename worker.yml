@@ -13,8 +13,8 @@ osm_file: 'map.osm.pbf'
 newfile: 'map_new.osm.pbf'
 profiles:
   fast:
-      port: 5000
-      osrm_profile: /home/osm/project-osrm/profiles/bicycle_fast.lua'
+    port: 5000
+    osrm_profile: /home/osm/project-osrm/profiles/bicycle_fast.lua'
   cargo:
     port: 5001
     osrm_profile: /home/osm/project-osrm/profiles/bicycle_cargo.lua'

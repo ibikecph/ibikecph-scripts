@@ -5,7 +5,7 @@
 
 require 'net/http'
 require 'json'
-require_relative 'configuration'
+require File.join( File.dirname(__FILE__), 'configuration' )
 
 # Manages a single virtual server
 class Server

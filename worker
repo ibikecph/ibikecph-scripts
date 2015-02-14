@@ -1,4 +1,5 @@
 #!/usr/bin/ruby
-require_relative 'worker'
+
+require File.join( File.dirname(__FILE__), 'worker' )
 worker = Worker.new
 worker.run ARGV
