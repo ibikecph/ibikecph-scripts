@@ -3,6 +3,7 @@
 #
 # ssh keys must be setup beforehand so password is not needed
 
+require 'rubygems'
 require 'net/http'
 require 'json'
 require File.join( File.dirname(__FILE__), 'configuration' )
