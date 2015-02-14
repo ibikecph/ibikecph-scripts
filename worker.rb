@@ -50,12 +50,12 @@ class Worker
     Dir.chdir "#{path 'data_folder'}" do
       @config['profiles'].each_pair do |profile_name,v|
         time("Processing profile: #{profile_name}") do
-          # rm and * can be dangerous. be careful not to wipe the disk with something like "rm -r *"
+          
+          # using rm with * can be dangerous
+          # we must be careful not to wipe the disk with something like "rm -r *"
           # appending .osrm gives some safety against this
           base = basename path('osm_file')
-          puts base
-          exit
-          run_cmd "rm -rf #{base}.osrm*"
+          run_cmd "rm -rf #{base}.osrm*"      # carefull with using *
           
           run_cmd "#{path 'bin_folder'}/osrm-extract #{path 'osm_file'} #{profile_name}"
           puts
