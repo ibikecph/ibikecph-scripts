@@ -45,7 +45,7 @@ class Worker
           
            # rm and * can be dangerous. be careful not to wipe the disk with something like "rm -r *"
            # appending .osrm gives some safety against this
-          base = path 'osm_file'.chomp File.extname(path 'osm_file')  #strip extension
+          base = path('osm_file').chomp File.extname(path 'osm_file')  #strip extension
           run_cmd "rm -rf #{base}.osrm*"
           
           run_cmd "#{path 'bin_folder'}/osrm-extract #{path 'osm_file'} #{profile_name}"
