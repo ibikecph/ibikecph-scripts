@@ -1,6 +1,7 @@
 # runs on the worker and handles actual processing og osrm data and tiles
 
 require File.expand_path( File.join( File.dirname(__FILE__), 'server' ) )
+require 'fileutils'
 
 class Worker  
   def initialize
@@ -32,7 +33,7 @@ class Worker
   def update_osm_data
     Dir.chdir @config['data_folder'] do
       run_cmd "osmosis --read-replication-interval workingDirectory=#{@config['replication_folder']} --simplify-change --read-pbf file=#{@config['osm_file']} --apply-change --bounding-polygon file=#{@config['polygon']} --write-pbf file=#{@config['new_osm_file']} omitmetadata=true"
-      FileUtils.mv @config['new_osm_file'], @config['osm_file']
+        .mv @config['new_osm_file'], @config['osm_file']
     end
   end
 
