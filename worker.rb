@@ -42,7 +42,7 @@ class Worker
     run_cmd "mkdir -p #{@config['data_folder']}/#{@config['package_name']}"
     timestamp = Time.now
     Dir.chdir "#{@config['data_folder']}" do
-      @config['profiles'].pairs do |k,v|
+      @config['profiles'].each_pair do |k,v|
         puts '----'
         time("Processing profile: #{k}") do      
           run_cmd "rm -rf #{@config['map_name']}.osrm*"
