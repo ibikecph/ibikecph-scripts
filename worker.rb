@@ -35,8 +35,8 @@ class Worker
   end
   
   def process
-    run_cmd "rm -rf #{path 'data_folder'}/#{path 'package_name'}"
-    run_cmd "mkdir -p #{path 'data_folder'}/#{path 'package_name'}"
+    run_cmd "rm -rf #{path 'data_folder'}/#{@config['package_name']}"
+    run_cmd "mkdir -p #{path 'data_folder'}/#{@config['package_name']}"
     timestamp = Time.now
     # osrm writes output to current folder, so must set it to where we want them before processing
     Dir.chdir "#{path 'data_folder'}" do
