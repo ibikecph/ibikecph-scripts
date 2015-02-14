@@ -5,6 +5,7 @@
 
 require 'rubygems'
 require 'net/http'
+require 'net/https'
 require 'json'
 require File.join( File.dirname(__FILE__), 'configuration' )
 
@@ -109,6 +110,7 @@ class Server
   def http_call call, method=:get
     uri = URI("#{@config['api_hostname']}/virtual_machines/#{@id}/#{call}.json")
     http = Net::HTTP.new(uri.host, uri.port)
+    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
     http.use_ssl = true
     if method == :post
       request = Net::HTTP::Post.new(uri.path)
