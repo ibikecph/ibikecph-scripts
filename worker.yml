@@ -13,13 +13,13 @@ new_osm_file: 'var/small_new.osm.pbf'
 profiles:
   fast:
     port: 5000
-    file: 'osrm-backend/profiles/bicycle_fast.lua'
+    lua_file: 'osrm-backend/profiles/bicycle_fast.lua'
   cargo:
     port: 5001
-    file: 'osrm-backend/profiles/bicycle_cargo.lua'
+    lua_file: 'osrm-backend/profiles/bicycle_cargo.lua'
   green:
     port: 5002
-    file: 'osrm-backend/profiles/bicycle_green.lua'
+    lua_file: 'osrm-backend/profiles/bicycle_green.lua'
 osrm_ip: '127.0.0.1'
 osrm_threads: 1
 import_style_file: 'ibikecph-scripts/-carto/tools/osm2pgsql.style'

@@ -45,7 +45,29 @@ class Worker
     base = File.basename(path).match(/[^\.]*/).to_s
     File.join( dir, base )
   end
-    
+
+  def process
+    run_cmd "rm -rf #{@config['data_folder']}/#{@config['package_name']}"
+    run_cmd "mkdir -p #{@config['data_folder']}/#{@config['package_name']}"
+    timestamp = Time.now
+    Dir.chdir "#{@config['data_folder']}" do
+      @config['profiles'].each_pair do |k,v|
+        puts '----'
+        time("Processing profile: #{k}") do      
+          run_cmd "rm -rf #{@config['map_name']}.osrm*"
+          puts
+          run_cmd "#{@config['bin_folder']}/osrm-extract #{@config['osm_file']} #{v['osrm_profile']}"
+          puts
+          run_cmd "#{@config['bin_folder']}/osrm-prepare #{@config['map_name']}.osrm #{@config['map_name']}.osrm.restrictions #{v['osrm_profile']}"
+          puts
+          run_cmd "mkdir -p #{@config['package_name']}/#{profile}; mv #{@config['map_name']}.osrm* #{@config['package_name']}/#{k}/"
+          run_cmd "echo '#{timestamp}' >> #{@config['data_folder']}/#{@config['package_name']}/#{profile}/#{@config['map_name']}.osrm.timestamp"
+        end
+      end
+    end
+  end
+
+
   def process
     run_cmd "rm -rf #{path 'data_folder'}/#{@config['package_name']}"
     run_cmd "mkdir -p #{path 'data_folder'}/#{@config['package_name']}"
@@ -62,7 +84,9 @@ class Worker
           run_cmd "rm -rf #{map_base}.osrm*"      # carefull with using *
           
           puts
-          run_cmd "#{path 'bin_folder'}/osrm-prepare #{map_base}.osrm #{map_base}.osrm.restrictions #{profile_name}"
+          run_cmd "#{path 'bin_folder'}/osrm-extract #{path 'osm_file' } #{profile['lua_file']}"
+          puts
+          run_cmd "#{path 'bin_folder'}/osrm-prepare #{map_base}.osrm #{map_base}.osrm.restrictions #{profile['lua_file']}"
           puts
           run_cmd "mkdir -p #{@config['package_name']}/#{profile_name}; mv #{@config['map_name']}.osrm* #{@config['package_name']}/#{profile_name}/"
           run_cmd "echo '#{timestamp}' >> #{path 'data_folder'}/#{@config['package_name']}/#{profile}/#{@config['map_name']}.osrm.timestamp"
