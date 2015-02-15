@@ -15,6 +15,8 @@ class Server
     @config = config
     raise "Config missing!" unless @config
     
+    @key = key
+    
     @settings = config['servers'][key.to_s]
     raise "Settings for server #{key} missing!" unless @settings
 
@@ -94,7 +96,9 @@ class Server
     # run script in background using '&'
     # use nohup, so it's not terminated when we log out of ssh
     # to avoid ssh hanging, make sure to redirect all three stream: stdout, stderr, stdin
-    system %{ssh #{@ssh_user}@#{@hostname} "nohup #{cmd} 2>&1 < /dev/null &"}
+    t = %{ssh #{@ssh_user}@#{@hostname} "nohup #{cmd} 2>&1 < /dev/null &"}
+    puts "--> #{t}"
+    system t
   end
     
   private
