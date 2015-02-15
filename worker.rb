@@ -195,7 +195,8 @@ class Worker
   
   def run argv
     divider :long
-    time 'Update' do
+    time 'Worker' do
+      puts "Options: #{arg.join(' ')}"
       begin
         all = argv.include?('all')
 
