@@ -52,7 +52,7 @@ class Worker
     File.basename(path).match(/[^\.]*/).to_s
   end
 
-  def process
+  def process_osrm
     run_cmd "rm -rf #{path 'data_folder'}/#{@config['package_name']}"
     run_cmd "mkdir -p #{path 'data_folder'}/#{@config['package_name']}"
     timestamp = Time.now
@@ -107,7 +107,7 @@ class Worker
     run_cmd "cp #{path 'bin_folder'}/osrm-* #{path 'data_folder'}/#{@config['package_name']}/"
   end
 
-  def rsync_osrm_data
+  def sync_osrm
     run_cmd "rm -rf #{@config['user']}@#{@config['server']}:/tmp/data"    # remove left-overs if any
     run_cmd "rsync -r --delete --force #{path 'data_folder'}/#{@config['package_name']} #{@config['user']}@#{@config['server']}:/tmp/"
   end
@@ -203,13 +203,13 @@ class Worker
         run_cmd "df -i"
         #run_cmd "free -m"
 
-        if all || argv.include?('osm')
+        if all || argv.include?('update-osm')
           divider
           time("Updating OSM data") { update_osm_data }
         end
-        if all || argv.include?('osrm')
+        if all || argv.include?('process-osrm')
           divider
-          time("Preprocess OSRM data") { process }
+          time("Preprocess OSRM data") { process_osrm }
           divider
           time("Writing OSRM configuration") { write_config }
           divider
@@ -217,13 +217,13 @@ class Worker
         end
         if all || argv.include?('sync-osrm')
           divider
-          time("Sync data to route server") { rsync_osrm_data }
+          time("Sync data to route server") { sync_osrm }
         end
         if all || argv.include?('deploy-osrm')
           divider
           time("Swap folders and restart OSRM") { deploy_osrm }
         end
-        if all || argv.include?('db')
+        if all || argv.include?('update-db')
           divider
           time("Import to Postgres") { postgres }
         end
@@ -233,7 +233,7 @@ class Worker
           divider
           time("Remove old tiles") { remove_tiles }
         end
-        if all || argv.include?('tiles')
+        if all || argv.include?('render-tiles')
           divider
           time("Remove old meta-tiles") { remove_metatiles }
           divider
