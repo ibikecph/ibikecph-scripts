@@ -7,7 +7,6 @@ class Worker
   def initialize
     @api_config = Configuration.new 'servers.yml'   # relative to working dir
     @config = Configuration.new File.join( File.dirname(__FILE__), 'worker.yml' ) # in repo folder
-    @map_base = 
   end
   
   def path key
