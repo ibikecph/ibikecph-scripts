@@ -81,8 +81,8 @@ class Worker
   end
 
   def write_config
-    @config['profiles'].each_pair do |t|
-      write_ini t[0], t[1]
+    @config['profiles'].each_pair do |profile_name,profile|
+      write_ini profile_name, profile['port']
     end
   end
 
