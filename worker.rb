@@ -83,8 +83,12 @@ class Worker
           map_base = basename path('osm_file')
           run_cmd "rm -rf #{map_base}.osrm*"      # carefull with using *
           
+          p profile
+          p profile['lua_file']
+          p path(profile['lua_file'])
+          
           puts
-          run_cmd "#{path 'bin_folder'}/osrm-extract #{path 'osm_file' } #{path profile['lua_file']}"
+          run_cmd "#{path 'bin_folder'}/osrm-extract #{path 'osm_file'} #{path profile['lua_file']}"
           puts
           run_cmd "#{path 'bin_folder'}/osrm-prepare #{map_base}.osrm #{map_base}.osrm.restrictions #{path profile['lua_file']}"
           puts
