@@ -88,9 +88,9 @@ class Worker
           p path(profile['lua_file'])
           
           puts
-          run_cmd "#{path 'bin_folder'}/osrm-extract #{path 'osm_file'} #{path profile['lua_file']}"
+          run_cmd "#{path 'bin_folder'}/osrm-extract #{path 'osm_file'} #{path_from_string profile['lua_file']}"
           puts
-          run_cmd "#{path 'bin_folder'}/osrm-prepare #{map_base}.osrm #{map_base}.osrm.restrictions #{path profile['lua_file']}"
+          run_cmd "#{path 'bin_folder'}/osrm-prepare #{map_base}.osrm #{map_base}.osrm.restrictions #{path_from_string profile['lua_file']}"
           puts
           run_cmd "mkdir -p #{@config['package_name']}/#{profile_name}; mv #{@config['map_name']}.osrm* #{@config['package_name']}/#{profile_name}/"
           run_cmd "echo '#{timestamp}' >> #{path 'data_folder'}/#{@config['package_name']}/#{profile}/#{@config['map_name']}.osrm.timestamp"
