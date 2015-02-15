@@ -87,20 +87,20 @@ class Worker
   end
 
   def write_ini profile, port
-    map_base = basename_with_path path('osm_file')
+    map_name = basename_without_path path('osm_file')
     
     s = <<-EOF
       Threads = #{@config['osrm_threads']}
       IP = #{@config['osrm_ip']}
       Port = #{port}
 
-      hsgrData=#{map_base}.osrm.hsgr
-      nodesData=#{map_base}.osrm.nodes
-      edgesData=#{map_base}.osrm.edges
-      ramIndex=#{map_base}.osrm.ramIndex
-      fileIndex=#{map_base}.osrm.fileIndex
-      namesData=#{map_base}.osrm.names
-      timestamp=#{map_base}.osrm.timestamp
+      hsgrData=#{map_name}.osrm.hsgr
+      nodesData=#{map_name}.osrm.nodes
+      edgesData=#{map_name}.osrm.edges
+      ramIndex=#{map_name}.osrm.ramIndex
+      fileIndex=#{map_name}.osrm.fileIndex
+      namesData=#{map_name}.osrm.names
+      timestamp=#{map_name}.osrm.timestamp
     EOF
     File.open( "#{path 'data_folder'}/#{@config['package_name']}/#{profile}/server.ini", 'w') {|f| f.write( s ) }
   end
