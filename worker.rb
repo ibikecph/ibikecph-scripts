@@ -85,7 +85,7 @@ class Worker
           
           p profile
           p profile['lua_file']
-          p path(profile['lua_file'])
+          p path_from_string(profile['lua_file'])
           
           puts
           run_cmd "#{path 'bin_folder'}/osrm-extract #{path 'osm_file'} #{path_from_string profile['lua_file']}"
