@@ -113,7 +113,7 @@ class Worker
   end
 
   def postgres
-    run_cmd "osm2pgsql -d osm -U osm -c -C8000 --number-processes=5 --style #{path 'import_style_file'}  --tag-transform-script #{path 'import_lua_file'} #{path 'data_folder'}/#{path 'osm_file'}"
+    run_cmd "osm2pgsql -d osm -U osm -c -C8000 --number-processes=5 --style #{path 'import_style_file'}  --tag-transform-script #{path 'import_lua_file'} #{path 'osm_file'}"
   end
 
   def remove_metatiles
