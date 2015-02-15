@@ -38,12 +38,18 @@ class Worker
     FileUtils.mv path('new_osm_file'), path('osm_file')
   end
   
-  def basename path
+  def basename_with_path path
     dir = File.dirname path
-    # File.basename with '.*' argument only removes one extension, so 'fun.a.b' would result in 'fun.b'
-    # we want just 'fun', so use a regex
+    # File.basename with '.*' argument only removes one extension, so 'fun.a.b' would result in 'fun.a'
+    # we want just 'fun', so use a regex to strip all extensions
     base = File.basename(path).match(/[^\.]*/).to_s
     File.join( dir, base )
+  end
+
+  def basename_without_path path
+    # File.basename with '.*' argument only removes one extension, so 'fun.a.b' would result in 'fun.a'
+    # we want just 'fun', so use a regex to strip all extensions
+    File.basename(path).match(/[^\.]*/).to_s
   end
 
   def process
@@ -58,16 +64,17 @@ class Worker
           # using rm with -r and * can be dangerous
           # we must be careful not to wipe the disk with something like "rm -r *"
           # appending .osrm gives some safety against this
-          map_base = basename path('osm_file')
+          map_base = basename_with_path path('osm_file')
           run_cmd "rm -rf #{map_base}.osrm*"      # carefull with using *
           
+          map_name = basename_without_path path('osm_file')
           puts
           run_cmd "#{path 'bin_folder'}/osrm-extract #{path 'osm_file'} #{path_from_string profile['lua_file']}"
           puts
           run_cmd "#{path 'bin_folder'}/osrm-prepare #{map_base}.osrm #{map_base}.osrm.restrictions #{path_from_string profile['lua_file']}"
           puts
           run_cmd "mkdir -p #{@config['package_name']}/#{profile_name}; mv #{map_base}.osrm* #{@config['package_name']}/#{profile_name}/"
-          run_cmd "echo '#{timestamp}' >> #{path 'data_folder'}/#{@config['package_name']}/#{profile_name}/#{map_base}.osrm.timestamp"
+          run_cmd "echo '#{timestamp}' >> #{path 'data_folder'}/#{@config['package_name']}/#{profile_name}/#{map_name}.osrm.timestamp"
         end
       end
     end
@@ -80,7 +87,7 @@ class Worker
   end
 
   def write_ini profile, port
-    map_base = basename path('osm_file')
+    map_base = basename_with_path path('osm_file')
     
     s = <<-EOF
       Threads = #{@config['osrm_threads']}
