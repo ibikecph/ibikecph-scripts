@@ -196,7 +196,7 @@ class Worker
   def run argv
     divider :long
     time 'Worker' do
-      puts "Options: #{arg.join(' ')}"
+      puts "Options: #{argv.join(' ')}"
       begin
         all = argv.include?('all')
 
