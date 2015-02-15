@@ -19,7 +19,7 @@ class Master
     puts "Starting update at #{Time.now}"
     @worker.up
     puts "Initiating worker at #{Time.now}."
-    if @worker.initiate "#{@worker_bin} #{options.join(' ')} >> #{@log_path}"
+    if @worker.initiate "#{@local_config['worker_bin']} #{options.join(' ')} >> #{@log_path}"
       puts 'View log file on worker to check progress'
       #we're done, worker will shut itself down after it finishes
     else
