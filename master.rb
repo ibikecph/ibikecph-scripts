@@ -15,15 +15,15 @@ class Master
   
   # Initiate the update on the worker
   def initiate_update options
-    puts "--------"
+    puts '-'*60
     puts "Starting update at #{Time.now}"
     @worker.up
-    puts "Initiating remote update at #{Time.now}."
-    if @worker.initiate "#{@update_cmd} #{options.join(' ')} >> #{@log_path}"
-      puts 'Remote update initiated, view log file on server to check progress'
+    puts "Initiating worker at #{Time.now}."
+    if @worker.initiate "#{@worker_bin} #{options.join(' ')} >> #{@log_path}"
+      puts 'View log file on worker to check progress'
       #we're done, worker will shut itself down after it finishes
     else
-      raise 'Failed to initiate remote update!'
+      raise 'Failed to initiate worker!'
     end
   rescue Exception => e
     puts e
