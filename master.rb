@@ -30,7 +30,7 @@ class Master
     puts e.backtrace
     @worker.shutdown
   ensure
-    puts "\n\n"
+    puts
   end
   
   # Read command line options and take action
