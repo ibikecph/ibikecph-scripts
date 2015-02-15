@@ -14,9 +14,9 @@ profiles:
   fast:
     port: 5000
     lua_file: 'osrm-backend/profiles/bicycle_fast.lua'
-#  cargo:
-#    port: 5001
-#    lua_file: 'osrm-backend/profiles/bicycle_cargo.lua'
+  cargo:
+    port: 5001
+    lua_file: 'osrm-backend/profiles/bicycle_cargo.lua'
 osrm_ip: '127.0.0.1'
 osrm_threads: 1
 import_style_file: 'ibikecph-scripts/-carto/tools/osm2pgsql.style'
