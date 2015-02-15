@@ -7,6 +7,7 @@ class Worker
   def initialize
     @api_config = Configuration.new 'servers.yml'   # relative to working dir
     @config = Configuration.new File.join( File.dirname(__FILE__), 'worker.yml' ) # in repo folder
+    @map_base = 
   end
   
   def path key
@@ -47,28 +48,6 @@ class Worker
   end
 
   def process
-    run_cmd "rm -rf #{@config['data_folder']}/#{@config['package_name']}"
-    run_cmd "mkdir -p #{@config['data_folder']}/#{@config['package_name']}"
-    timestamp = Time.now
-    Dir.chdir "#{@config['data_folder']}" do
-      @config['profiles'].each_pair do |k,v|
-        puts '----'
-        time("Processing profile: #{k}") do      
-          run_cmd "rm -rf #{@config['map_name']}.osrm*"
-          puts
-          run_cmd "#{@config['bin_folder']}/osrm-extract #{@config['osm_file']} #{v['osrm_profile']}"
-          puts
-          run_cmd "#{@config['bin_folder']}/osrm-prepare #{@config['map_name']}.osrm #{@config['map_name']}.osrm.restrictions #{v['osrm_profile']}"
-          puts
-          run_cmd "mkdir -p #{@config['package_name']}/#{profile}; mv #{@config['map_name']}.osrm* #{@config['package_name']}/#{k}/"
-          run_cmd "echo '#{timestamp}' >> #{@config['data_folder']}/#{@config['package_name']}/#{profile}/#{@config['map_name']}.osrm.timestamp"
-        end
-      end
-    end
-  end
-
-
-  def process
     run_cmd "rm -rf #{path 'data_folder'}/#{@config['package_name']}"
     run_cmd "mkdir -p #{path 'data_folder'}/#{@config['package_name']}"
     timestamp = Time.now
@@ -83,17 +62,13 @@ class Worker
           map_base = basename path('osm_file')
           run_cmd "rm -rf #{map_base}.osrm*"      # carefull with using *
           
-          p profile
-          p profile['lua_file']
-          p path_from_string(profile['lua_file'])
-          
           puts
           run_cmd "#{path 'bin_folder'}/osrm-extract #{path 'osm_file'} #{path_from_string profile['lua_file']}"
           puts
           run_cmd "#{path 'bin_folder'}/osrm-prepare #{map_base}.osrm #{map_base}.osrm.restrictions #{path_from_string profile['lua_file']}"
           puts
-          run_cmd "mkdir -p #{@config['package_name']}/#{profile_name}; mv #{@config['map_name']}.osrm* #{@config['package_name']}/#{profile_name}/"
-          run_cmd "echo '#{timestamp}' >> #{path 'data_folder'}/#{@config['package_name']}/#{profile}/#{@config['map_name']}.osrm.timestamp"
+          run_cmd "mkdir -p #{@config['package_name']}/#{profile_name}; mv #{map_base}.osrm* #{@config['package_name']}/#{profile_name}/"
+          run_cmd "echo '#{timestamp}' >> #{path 'data_folder'}/#{@config['package_name']}/#{profile}/#{map_base}.osrm.timestamp"
         end
       end
     end
@@ -106,18 +81,20 @@ class Worker
   end
 
   def write_ini profile, port
+    map_base = basename path('osm_file')
+    
     s = <<-EOF
       Threads = #{@config['osrm_threads']}
       IP = #{@config['osrm_ip']}
       Port = #{port}
 
-      hsgrData=#{@config['map_name']}.osrm.hsgr
-      nodesData=#{@config['map_name']}.osrm.nodes
-      edgesData=#{@config['map_name']}.osrm.edges
-      ramIndex=#{@config['map_name']}.osrm.ramIndex
-      fileIndex=#{@config['map_name']}.osrm.fileIndex
-      namesData=#{@config['map_name']}.osrm.names
-      timestamp=#{@config['map_name']}.osrm.timestamp
+      hsgrData=#{map_base}.osrm.hsgr
+      nodesData=#{map_base}.osrm.nodes
+      edgesData=#{map_base}.osrm.edges
+      ramIndex=#{map_base}.osrm.ramIndex
+      fileIndex=#{map_base}.osrm.fileIndex
+      namesData=#{map_base}.osrm.names
+      timestamp=#{map_base}.osrm.timestamp
     EOF
     File.open( "#{path 'data_folder'}/#{@config['package_name']}/#{profile}/server.ini", 'w') {|f| f.write( s ) }
   end
