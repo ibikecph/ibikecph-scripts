@@ -67,7 +67,7 @@ class Worker
           run_cmd "#{path 'bin_folder'}/osrm-prepare #{map_base}.osrm #{map_base}.osrm.restrictions #{path_from_string profile['lua_file']}"
           puts
           run_cmd "mkdir -p #{@config['package_name']}/#{profile_name}; mv #{map_base}.osrm* #{@config['package_name']}/#{profile_name}/"
-          run_cmd "echo '#{timestamp}' >> #{path 'data_folder'}/#{@config['package_name']}/#{profile}/#{map_base}.osrm.timestamp"
+          run_cmd "echo '#{timestamp}' >> #{path 'data_folder'}/#{@config['package_name']}/#{profile_name}/#{map_base}.osrm.timestamp"
         end
       end
     end
