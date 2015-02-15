@@ -14,12 +14,12 @@ class Master
   end
   
   # Initiate the update on the worker
-  def initiate_update
+  def initiate_update options
     puts "--------"
     puts "Starting update at #{Time.now}"
     @worker.up
     puts "Initiating remote update at #{Time.now}."
-    if @worker.initiate "#{@update_cmd} >> #{@log_path}"
+    if @worker.initiate "#{@update_cmd} #{optionsa.join(' ')} >> #{@log_path}"
       puts 'Remote update initiated, view log file on server to check progress'
       #we're done, worker will shut itself down after it finishes
     else
@@ -35,8 +35,10 @@ class Master
   
   # Read command line options and take action
   def run argv
-    if argv[0]=='update'
-      initiate_update
+    p argv
+    if argv[0]=='run'
+      argv.shift
+      initiate_update argv
     elsif argv[0]=='up'
       @worker.up
     elsif argv[0]=='down'
