@@ -263,8 +263,8 @@ class Worker
         puts e.backtrace
       ensure
         if all || argv.include?('shutdown')
-          #divider
-          #time("Shutdown") { shutdown }
+          divider
+          time("Shutdown") { shutdown }
         end
       end
     end
