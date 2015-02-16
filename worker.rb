@@ -146,8 +146,8 @@ class Worker
   end
 
   def convert_tiles
-    run_cmd "#{path 'root'}/meta2tile /tiles/meta/web /tiles/plain/web"
-    run_cmd "#{path 'root'}/meta2tile /tiles/meta/retina /tiles/plain/retina"
+    run_cmd "#{path 'meta2tile_bin'} /tiles/meta/web /tiles/plain/web"
+    run_cmd "#{path 'meta2tile_bin'} /tiles/meta/retina /tiles/plain/retina"
   #  run_cmd "#{path 'root'}/meta2tile /tiles/meta/background /tiles/plain/background"
   end
 
@@ -234,13 +234,17 @@ class Worker
           divider
           time("Remove old tiles") { remove_tiles }
         end
-        if all || argv.include?('render-tiles')
+        if all || argv.include?('clean-tiles')
           divider
           time("Remove old meta-tiles") { remove_metatiles }
           divider
           time("Remove old tiles") { remove_tiles }
+        end
+        if all || argv.include?('render-tiles')
           divider
           time("Render meta-tiles") { render_tiles }
+        end
+        if all || argv.include?('convert-tiles')
           divider
           time("Convert meta-tiles") { convert_tiles }
         end

@@ -10,6 +10,7 @@ package_name: 'data'
 osrm_file: 'var/map.osrm'
 osm_file: 'var/map.osm.pbf'
 new_osm_file: 'var/map_new.osm.pbf'
+meta2tile_bin: 'meta2tile'
 profiles:
   fast:
     port: 5000
