@@ -198,17 +198,20 @@ class Worker
     time 'Worker' do
       puts "Options: #{argv.join(' ')}"
       begin
-        all = argv.include?('all')
+        all = 'all'
+        osrm = 'osrm'
+        tiles = 'tiles'
 
-        run_cmd "df -h"
-        run_cmd "df -i"
-        #run_cmd "free -m"
+        run_cmd 'df -h'
+        run_cmd 'df -i'
+        #run_cmd 'free -m'
 
-        if all || argv.include?('update-osm')
+        if (argv & [all,osrm,'update-osrm']).any?
           divider
           time("Updating OSM data") { update_osm_data }
         end
-        if all || argv.include?('process-osrm')
+
+        if (argv & [all,osrm,'process-osrm']).any?
           divider
           time("Preprocess OSRM data") { process_osrm }
           divider
@@ -216,43 +219,45 @@ class Worker
           divider
           time("Copy binaries") { copy_binaries }
         end
-        if all || argv.include?('sync-osrm')
+
+        if (argv & [all,osrm,'sync-osrm']).any?
           divider
           time("Sync data to route server") { sync_osrm }
         end
-        if all || argv.include?('deploy-osrm')
+
+        if (argv & [all,osrm,'deploy-osrm']).any?
           divider
           time("Swap folders and restart OSRM") { deploy_osrm }
         end
-        if all || argv.include?('update-db')
+
+        if (argv & [all,tiles,'update-db']).any?
           divider
           time("Import to Postgres") { postgres }
         end
-        if argv.include?('clean-tiles')
+
+        if (argv & [all,tiles,'clean-tiles']).any?
           divider
           time("Remove old meta-tiles") { remove_metatiles }
           divider
           time("Remove old tiles") { remove_tiles }
         end
-        if all || argv.include?('clean-tiles')
-          divider
-          time("Remove old meta-tiles") { remove_metatiles }
-          divider
-          time("Remove old tiles") { remove_tiles }
-        end
-        if all || argv.include?('render-tiles')
+
+        if (argv & [all,tiles,'render-tiles']).any?
           divider
           time("Render meta-tiles") { render_tiles }
         end
-        if all || argv.include?('convert-tiles')
+
+        if (argv & [all,tiles,'convert-tiles']).any?
           divider
           time("Convert meta-tiles") { convert_tiles }
         end
-        if all || argv.include?('sync-tiles')
+
+        if (argv & [all,tiles,'sync-tiles']).any?
           divider
           time("Sync tiles to tiles server") { sync_tiles }
         end
-        if all || argv.include?('test')
+
+        if (argv & [all,test']).any?
           divider
           time("Test") {}
         end
