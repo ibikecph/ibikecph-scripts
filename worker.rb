@@ -257,7 +257,7 @@ class Worker
           time("Sync tiles to tiles server") { sync_tiles }
         end
 
-        if (argv & [all,test']).any?
+        if (argv & [all,'test']).any?
           divider
           time("Test") {}
         end
