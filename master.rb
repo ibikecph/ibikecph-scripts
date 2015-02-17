@@ -46,6 +46,8 @@ class Master
       puts "Worker is #{@worker.status}"
     elsif argv[0]=='test'
       puts "Test at #{Time.now}."
+    else
+      puts "Unknown option #{argv[0]}!"
     end
   end
 end
