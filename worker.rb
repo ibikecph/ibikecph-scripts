@@ -178,7 +178,7 @@ class Worker
   end
 
   def shutdown
-    me = Server.new @api_config, :worker_v1
+    me = Server.new @api_config, :worker
     me.shutdown
   end
   

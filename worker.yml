@@ -30,7 +30,7 @@ render_tasks:
   - 'z=9-17 bbox=7.5,54.5,15.5,57.9 map=ibikecph_web'
   - 'z=0-8 bbox=-180,-85,180,85 map=ibikecph_retina'
   - 'z=9-17 bbox=7.5,54.5,15.5,57.9 map=ibikecph_retina'
-server: 'routes-v1.ibikecph.dk'
+server: 'routes.ibikecph.dk'
 user: 'root'
 server_root: '/home/osm'
 server_bin_path: 'osrm-backend'
