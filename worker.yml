@@ -18,6 +18,9 @@ profiles:
   cargo:
     port: 5001
     lua_file: 'osrm-backend/profiles/bicycle_cargo.lua'
+  green:
+    port: 5002
+    lua_file: 'osrm-backend/profiles/bicycle_green.lua'
 osrm_ip: '127.0.0.1'
 osrm_threads: 1
 import_style_file: 'ibikecph-carto/tools/osm2pgsql.style'
