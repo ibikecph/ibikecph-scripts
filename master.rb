@@ -8,7 +8,7 @@ class Master
     @api_config = Configuration.new 'servers.yml'   # relative to working dir
     @local_config = Configuration.new File.join( File.dirname(__FILE__), 'master.yml' ) # in repo folder
     
-    @worker = Server.new @api_config, 'worker_v1'
+    @worker = Server.new @api_config, 'worker'
     @update_cmd = @local_config['update_cmd']
     @log_path = @local_config['log_path']
   end
