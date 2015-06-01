@@ -267,9 +267,11 @@ class Worker
         puts e
         puts e.backtrace
       ensure
-        if all || argv.include?('shutdown')
-          divider
-          time("Shutdown") { shutdown }
+        unless argv.include?('keepup')
+          if all || argv.include?('shutdown')
+            divider
+            time("Shutdown") { shutdown }
+          end
         end
       end
     end
