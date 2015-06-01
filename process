@@ -1,0 +1,235 @@
+#!/usr/bin/ruby
+
+require 'fileutils'
+require 'rubygems'
+require 'savon'
+
+config = YAML.load_file('process.yml')
+
+USERNAME = config['username']
+PASSWORD = config['password']
+SERVER_ID = config['server_id']
+
+ROOT = File.expand_path '~'
+BIN_PATH  = ROOT+'/osrm-backend/build'
+DATA_FOLDER = ROOT+'/var'
+REPLICATION_FOLDER = 'replicate'
+PROFILES = { 'fast' => 5000, 'cargo' => 5001, 'green' => 5002 }
+PROFILES_FOLDER = ROOT+'/osrm-backend/profiles'
+INI_FOLDER = "#{ROOT}/ini"
+MAP_NAME = 'map'
+POLYGON = ROOT+"/var/#{MAP_NAME}.poly"
+PACKAGE_NAME = 'data'
+OSM_FILE = "#{MAP_NAME}.osm.pbf"
+NEWFILE = "#{MAP_NAME}_new.osm.pbf"
+USER = 'osm'
+SERVER = '77.66.112.7'
+SERVER_ROOT = '/home/osm'
+RENDER_OPTIONS = [
+  'z=0-8 bbox=-180,-85,180,85 map=ibikecph_web',
+  'z=9-17 bbox=7.5,54.5,15.5,57.9 map=ibikecph_web',
+
+  'z=0-8 bbox=-180,-85,180,85 map=ibikecph_retina',
+  'z=9-17 bbox=7.5,54.5,15.5,57.9 map=ibikecph_retina'
+]
+SERVER_BIN_PATH = SERVER_ROOT + '/Project-OSRM'
+OSRM_IP = "127.0.0.1"
+OSRM_THREADS = 1
+IMPORT_STYLE_FILE = "#{ROOT}/ibikecph-carto/tools/osm2pgsql.style"
+TAG_TRANSFORM_FILE = "#{ROOT}/ibikecph-carto/tools/import.lua"
+CREATE_INDEX_FILE = "#{ROOT}/ibikecph-carto/tools/create_indexes.sql"
+
+#Savon.configure do |config|
+#  config.log = false
+#end
+
+HTTPI.log = false
+
+def time str, &block
+  start = Time.now
+  puts '---------'
+  puts "#{str}: Starting at #{start}"
+  yield block
+  finish = Time.now
+  seconds = (Time.now - start).to_i
+  formatted = format_time seconds
+  puts "#{str}: Completed in #{seconds}s / #{formatted}, at #{finish}."
+end
+
+def run_cmd cmd
+  puts cmd
+  raise "Failed to run command: #{cmd}" unless system cmd
+end
+
+def update_osm_data
+  Dir.chdir DATA_FOLDER do
+    run_cmd "osmupdate #{OSM_FILE} #{NEWFILE} -B=#{POLYGON}"
+    FileUtils.mv NEWFILE, OSM_FILE
+  end
+end
+
+def process
+  run_cmd "rm -rf #{DATA_FOLDER}/#{PACKAGE_NAME}"
+  run_cmd "mkdir -p #{DATA_FOLDER}/#{PACKAGE_NAME}"
+  timestamp = Time.now
+  Dir.chdir "#{DATA_FOLDER}" do
+    for profile in PROFILES.keys do
+      time("Processing profile: #{profile}") do      
+        profile_path = "#{PROFILES_FOLDER}/#{profile}.lua"
+        run_cmd "rm -rf #{MAP_NAME}.osrm*"
+        puts
+        run_cmd "#{BIN_PATH}/osrm-extract #{OSM_FILE} --profile #{profile_path}"
+        puts
+        run_cmd "#{BIN_PATH}/osrm-prepare #{MAP_NAME}.osrm --profile #{profile_path}"
+        puts
+        run_cmd "mkdir -p #{PACKAGE_NAME}/#{profile}; mv #{MAP_NAME}.osrm* #{PACKAGE_NAME}/#{profile}/"
+        puts
+      end
+    end
+  end
+end
+
+def write_options
+  PROFILES.each_pair do |t|
+    write_options_for_profile t[0], t[1]
+  end
+end
+
+def write_options_for_profile profile, port
+  s = "--threads #{OSRM_THREADS} --ip #{OSRM_IP} --port #{port}"
+  File.open( "#{DATA_FOLDER}/#{PACKAGE_NAME}/#{profile}/osrm-routed.options", 'w') {|f| f.write( s ) }
+end
+
+
+def copy_binaries
+  run_cmd "cp #{BIN_PATH}/osrm-* #{DATA_FOLDER}/#{PACKAGE_NAME}/"
+end
+
+def rsync_osrm_data
+  run_cmd "rm -rf #{USER}@#{SERVER}:/tmp/data"    # remove left-overs if any
+  run_cmd "rsync -r --delete --force #{DATA_FOLDER}/#{PACKAGE_NAME} #{USER}@#{SERVER}:/tmp/"
+end
+
+def import_to_postgres
+  run_cmd "osm2pgsql -U osm -d osm --slim --style #{IMPORT_STYLE_FILE} --tag-transform-script #{TAG_TRANSFORM_FILE} #{DATA_FOLDER}/#{OSM_FILE}"
+  run_cmd "psql -U osm -d osm -f #{CREATE_INDEX_FILE}"
+end
+
+def remove_metatiles
+#  run_cmd "rm -rf /tiles/meta/web/*"
+#  run_cmd "rm -rf /tiles/meta/retina/*"
+end
+
+def remove_tiles
+  run_cmd "rm -rf /tiles/plain/web/*"
+  run_cmd "rm -rf /tiles/plain/retina/*"
+#  run_cmd "rm -rf /tiles/plain/background/*"
+end
+
+def render_tiles
+  RENDER_OPTIONS.each do |options|
+    run_cmd "tirex-batch #{options}"
+  end
+
+  raw = ''
+  (20*60).times do |i|
+    sleep 60
+    raw = `tirex-status --raw`
+    size = /"size" : (\d+)/.match(raw)[1].to_i
+    #if i%30 == 0
+      puts "#{size} tiles left to render, at #{Time.now}"
+    #end
+    return if size==0
+  end
+  raise "Rendering timed out! Last tirex-status raw: #{raw}"
+end
+
+def convert_tiles
+  run_cmd "#{ROOT}/meta2tile /tiles/meta/web /tiles/plain/web"
+  run_cmd "#{ROOT}/meta2tile /tiles/meta/retina /tiles/plain/retina"
+#  run_cmd "#{ROOT}/meta2tile /tiles/meta/background /tiles/plain/background"
+end
+
+def sync_tiles
+  run_cmd "rsync -r --ignore-times /tiles/plain/ root@tiles.ibikecph.dk:/tiles/new/"
+  run_cmd %{ssh root@tiles.ibikecph.dk "mv /tiles/current /tiles/old; mv /tiles/new /tiles/current"}
+#  run_cmd %{ssh root@tiles.ibikecph.dk "nohup rm -r /tiles/old >> /dev/null 2>&1 < /dev/null &"}
+end
+
+def deploy
+  # note: /etc/sudoer must allow the osm user to run 'sudo start/stop osrm' without password
+  log_msg = "OSRM update deployed at #{Time.now}"
+  cmd = <<-EOF
+    rm -rf #{SERVER_ROOT}/#{PACKAGE_NAME}_old;
+    sudo stop osrm;
+    mv #{SERVER_ROOT}/#{PACKAGE_NAME} #{SERVER_ROOT}/#{PACKAGE_NAME}_old;
+    mv /tmp/#{PACKAGE_NAME} #{SERVER_ROOT}/#{PACKAGE_NAME};
+    sudo start osrm;
+    echo '#{log_msg}' >> #{SERVER_ROOT}/log/deploy.log;
+  EOF
+  run_cmd %{ssh #{USER}@#{SERVER} "#{cmd}" }
+end
+
+def shutdown
+  puts 'Shutting down'
+  client = Savon::Client.new do
+    wsdl.document = "https://api.cloud.dk/?wsdl"
+    http.auth.basic USERNAME, PASSWORD
+    http.auth.ssl.verify_mode = :none
+  end
+  client.request :stop_server, :body => { 'server_id' => SERVER_ID, 'stop_method' => 1 }
+end
+
+def format_time total_seconds
+  seconds = total_seconds % 60
+  minutes = (total_seconds / 60) % 60
+  hours = total_seconds / (60 * 60)
+  format("%02d:%02d:%02d", hours, minutes, seconds)
+end
+
+def update
+  puts '---------------------------------------'
+  time("Updating") do
+    begin
+      if ARGV.include?('info')
+        run_cmd "df -h"
+        run_cmd "df -ih"
+        run_cmd "free -m"
+      end
+      if ARGV.include?('osm')
+        time("Updating OSM data") { update_osm_data }
+      end
+      if ARGV.include?('db')
+        time("Import to Postgres") { import_to_postgres }
+      end
+      if ARGV.include?('osrm')
+        time("Preprocess OSRM data") { process }
+        time("Writing OSRM options") { write_options }
+        time("Copy binaries") { copy_binaries }
+      end
+      if ARGV.include?('tiles')
+        # import to db happens above
+        time("Render meta-tiles") { render_tiles }
+        time("Remove old tiles") { remove_tiles }
+        time("Convert meta-tiles") { convert_tiles }
+      end
+      if ARGV.include?('deploy:osrm')
+        time("Sync data to route server") { rsync_osrm_data }
+        time("Swap folders and restart OSRM") { deploy }
+      end
+      if ARGV.include?('deploy:tiles')
+        time("Sync tiles to tiles server") { sync_tiles }
+      end
+
+    rescue Exception => e
+      puts "*** An error occurred:"
+      puts e
+    ensure
+      if ARGV.include?('shutdown')
+        time("Shutdown") { shutdown }
+      end
+    end
+  end
+end
+
+update
