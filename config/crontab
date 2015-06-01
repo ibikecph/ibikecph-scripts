@@ -21,9 +21,9 @@
 #
 # m h  dom mon dow   command
 
-0 2 * * * /home/osm/ibikecph/update 2>&1 >> /home/osm/update.log
-#0 8 * * * /home/osm/ibikecph/update 2>&1 >> /home/osm/update.log
-#0 10 * * * /home/osm/ibikecph/update 2>&1 >> /home/osm/update.log
-#0 12 * * * /home/osm/ibikecph/update 2>&1 >> /home/osm/update.log
-#0 14 * * * /home/osm/ibikecph/update 2>&1 >> /home/osm/update.log
-#0 16 * * * /home/osm/ibikecph/update 2>&1 >> /home/osm/update.log
+
+# update osrm each night and tiles on sunday nights
+# could break if the full update on sundays takes too long.
+
+0 5 * * MON,TUE,WED,THU,FRI,SAT cd /home/osm; ./ibikecph-scripts/master run osrm >> /home/osm/log/update.log 2>&1
+0 1 * * SUN                     cd /home/osm; ./ibikecph-scripts/master run osrm tiles >> /home/osm/log/update.log 2>&1

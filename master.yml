@@ -1,0 +1,3 @@
+---
+worker_bin: '/home/osm/ibikecph-scripts/worker'
+log_path: '/home/osm/log/update.log'
