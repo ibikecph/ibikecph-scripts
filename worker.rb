@@ -211,6 +211,11 @@ class Worker
           time("Updating OSM data") { update_osm_data }
         end
 
+        if (argv & [all,osrm,tiles,'update-db']).any?
+          divider
+          time("Import to Postgres") { postgres }
+        end
+
         if (argv & [all,osrm,'process-osrm']).any?
           divider
           time("Preprocess OSRM data") { process_osrm }
@@ -228,11 +233,6 @@ class Worker
         if (argv & [all,osrm,'deploy-osrm']).any?
           divider
           time("Swap folders and restart OSRM") { deploy_osrm }
-        end
-
-        if (argv & [all,tiles,'update-db']).any?
-          divider
-          time("Import to Postgres") { postgres }
         end
 
         if (argv & [all,tiles,'clean-tiles']).any?
