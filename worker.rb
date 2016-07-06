@@ -69,7 +69,7 @@ class Worker
           
           map_name = basename_without_path path('osm_file')
           run_cmd "#{path 'bin_folder'}/osrm-extract #{path 'osm_file'} --profile #{path_from_string profile['lua_file']}"
-          run_cmd "#{path 'bin_folder'}/osrm-contract #{map_base}.osrm --profile #{path_from_string profile['lua_file']}"
+          run_cmd "#{path 'bin_folder'}/osrm-contract #{map_base}.osrm"
           run_cmd "mkdir -p #{@config['package_name']}/#{profile_name}; mv #{map_base}.osrm* #{@config['package_name']}/#{profile_name}/"
           run_cmd "echo '#{timestamp}' >> #{path 'data_folder'}/#{@config['package_name']}/#{profile_name}/#{map_name}.osrm.timestamp"
         end
