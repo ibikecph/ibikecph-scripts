@@ -69,39 +69,13 @@ class Worker
           
           map_name = basename_without_path path('osm_file')
           run_cmd "#{path 'bin_folder'}/osrm-extract #{path 'osm_file'} --profile #{path_from_string profile['lua_file']}"
-          run_cmd "#{path 'bin_folder'}/osrm-prepare #{map_base}.osrm --profile #{path_from_string profile['lua_file']}"
+          run_cmd "#{path 'bin_folder'}/osrm-contract #{map_base}.osrm --profile #{path_from_string profile['lua_file']}"
           run_cmd "mkdir -p #{@config['package_name']}/#{profile_name}; mv #{map_base}.osrm* #{@config['package_name']}/#{profile_name}/"
           run_cmd "echo '#{timestamp}' >> #{path 'data_folder'}/#{@config['package_name']}/#{profile_name}/#{map_name}.osrm.timestamp"
         end
       end
     end
   end
-
-  def write_config
-    @config['profiles'].each_pair do |profile_name,profile|
-      write_ini profile_name, profile['port']
-    end
-  end
-
-  def write_ini profile, port
-    map_name = basename_without_path path('osm_file')
-    
-    s = <<-EOF
-      Threads = #{@config['osrm_threads']}
-      IP = #{@config['osrm_ip']}
-      Port = #{port}
-
-      hsgrData=#{map_name}.osrm.hsgr
-      nodesData=#{map_name}.osrm.nodes
-      edgesData=#{map_name}.osrm.edges
-      ramIndex=#{map_name}.osrm.ramIndex
-      fileIndex=#{map_name}.osrm.fileIndex
-      namesData=#{map_name}.osrm.names
-      timestamp=#{map_name}.osrm.timestamp
-    EOF
-    File.open( "#{path 'data_folder'}/#{@config['package_name']}/#{profile}/server.ini", 'w') {|f| f.write( s ) }
-  end
-
 
   def copy_binaries
     run_cmd "cp #{path 'bin_folder'}/osrm-* #{path 'data_folder'}/#{@config['package_name']}/"
@@ -113,7 +87,7 @@ class Worker
   end
 
   def postgres
-    run_cmd "osm2pgsql -d osm -U osm -c -C8000 --number-processes=5 --style #{path 'import_style_file'}  --tag-transform-script #{path 'import_lua_file'} #{path 'osm_file'}"
+    run_cmd "osm2pgsql -d osm -U osm -c -C8000 --number-processes=5 --keep-coastlines --style #{path 'import_style_file'}  --tag-transform-script #{path 'import_lua_file'} #{path 'osm_file'}"
   end
 
   def remove_metatiles
@@ -219,8 +193,6 @@ class Worker
         if (argv & [all,osrm,'process-osrm']).any?
           divider
           time("Preprocess OSRM data") { process_osrm }
-          divider
-          time("Writing OSRM configuration") { write_config }
           divider
           time("Copy binaries") { copy_binaries }
         end
