@@ -180,7 +180,7 @@ class Worker
         run_cmd 'df -i'
         #run_cmd 'free -m'
 
-        if (argv & [all,osrm,'update-osrm']).any?
+        if (argv & [all,osrm,'update-osm']).any?
           divider
           time("Updating OSM data") { update_osm_data }
         end
