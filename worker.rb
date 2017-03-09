@@ -87,7 +87,7 @@ class Worker
   end
 
   def postgres
-    run_cmd "osm2pgsql -d osm -U osm -c -C8000 --number-processes=5 --keep-coastlines --style #{path 'import_style_file'}  --tag-transform-script #{path 'import_lua_file'} #{path 'osm_file'}"
+    run_cmd "osm2pgsql -d osm -U osm -c -C12000 --number-processes=16 --keep-coastlines --style #{path 'import_style_file'}  --tag-transform-script #{path 'import_lua_file'} #{path 'osm_file'}"
   end
 
   def remove_metatiles
@@ -127,8 +127,8 @@ class Worker
 
   def sync_tiles
     run_cmd "rsync -r --ignore-times /tiles/plain/ root@tiles.ibikecph.dk:/tiles/new/"
-    run_cmd %{ssh root@tiles.ibikecph.dk "mv /tiles/current /tiles/old; mv /tiles/new /tiles/current"}
     run_cmd %{ssh root@tiles.ibikecph.dk "nohup rm -r /tiles/old >> /dev/null 2>&1 < /dev/null &"}
+    run_cmd %{ssh root@tiles.ibikecph.dk "mv /tiles/current /tiles/old; mv /tiles/new /tiles/current"}
   end
 
   def deploy_osrm
