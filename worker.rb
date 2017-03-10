@@ -135,10 +135,10 @@ class Worker
     log_msg = "OSRM update deployed at #{Time.now}"
     cmd = <<-EOF
       rm -rf #{@config['server_root']}/#{@config['package_name']}_old;
-      stop #{@config['service_name']};
+      systemctl stop #{@config['service_name']};
       mv #{@config['server_root']}/#{@config['package_name']} #{@config['server_root']}/#{@config['package_name']}_old;
       mv /tmp/#{@config['package_name']} #{@config['server_root']}/#{@config['package_name']};
-      start #{@config['service_name']};
+      systemctl start #{@config['service_name']};
       echo '#{log_msg}' >> #{@config['server_root']}/log/deploy.log;
     EOF
     run_cmd %{ssh #{@config['user']}@#{@config['server']} "#{cmd}" }
