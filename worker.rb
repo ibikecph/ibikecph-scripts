@@ -3,7 +3,9 @@
 require File.expand_path( File.join( File.dirname(__FILE__), 'server' ) )
 require 'fileutils'
 
-class Worker  
+class Worker
+  attr_reader :api_config
+  
   def initialize
     @api_config = Configuration.new 'servers.yml'   # relative to working dir
     @config = Configuration.new File.join( File.dirname(__FILE__), 'worker.yml' ) # in repo folder

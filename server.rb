@@ -11,6 +11,8 @@ require File.expand_path( File.join( File.dirname(__FILE__), 'configuration' ) )
 
 # Manages a single virtual server
 class Server
+  attr_reader :config, :key, :settings, :id, :hostname, :ssh_user
+
   def initialize config, key
     @config = config
     raise "Config missing!" unless @config
@@ -32,7 +34,7 @@ class Server
     
   def status
     response = http_get 'status'
-    status = JSON.parse(response.body).first['virtual_machine']
+    status = JSON.parse(response.body)['virtual_machine']
     if status['locked'] == false
       if status['booted'] == true
         :up

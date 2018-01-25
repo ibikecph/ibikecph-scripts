@@ -3,6 +3,8 @@
 require File.expand_path( File.join( File.dirname(__FILE__), 'server' ) )
 
 class Master
+  attr_reader :worker, :api_config, :local_config
+
   def initialize
     # config files are loaded relative to working dir, not this file
     @api_config = Configuration.new 'servers.yml'   # relative to working dir
